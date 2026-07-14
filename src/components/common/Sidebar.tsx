@@ -6,7 +6,6 @@ import {
   BookOpen,
   RefreshCw,
   FolderHeart,
-  BarChart2,
   User,
   Settings,
   Database,
@@ -34,7 +33,6 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
     { name: "Problems", to: "/problems", icon: BookOpen },
     { name: "Revision Queue", to: "/revision", icon: RefreshCw },
     { name: "Collections", to: "/collections", icon: FolderHeart },
-    { name: "Reports", to: "/reports", icon: BarChart2 },
   ];
 
   const userNav = [
