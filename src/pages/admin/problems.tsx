@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/loader";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 
 import {
   Plus,
   Trash2,
   Edit,
-  ExternalLink,
   Copy,
   CheckCircle2,
   XCircle,
@@ -71,8 +72,6 @@ export function AdminProblemsPage() {
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDifficulty, setFilterDifficulty] = useState("All");
-  const [filterTopic, setFilterTopic] = useState("All");
-  const [filterCompany, setFilterCompany] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
 
   // Pagination Binds
@@ -118,6 +117,21 @@ export function AdminProblemsPage() {
     loadAdminProblems();
   }, []);
 
+  // Toggle status inline helper
+  const handleToggleStatus = async (prob: Problem) => {
+    const newStatus = prob.status === "inactive" ? "active" : "inactive";
+    try {
+      await api.put(`/problems/${prob.id}`, {
+        ...prob,
+        status: newStatus,
+      });
+      addToast(`Problem "${prob.title}" publish status updated to ${newStatus}.`, "success");
+      loadAdminProblems();
+    } catch {
+      addToast("Failed to toggle publish status.", "error");
+    }
+  };
+
   // Compute Statistics
   const stats = useMemo(() => {
     const total = problems.length;
@@ -130,25 +144,12 @@ export function AdminProblemsPage() {
   // Filtered List
   const filteredProblems = useMemo(() => {
     return problems.filter((p) => {
-      // Search Binds
+      // Search Binds (Match title)
       const q = searchQuery.toLowerCase();
-      const matchSearch =
-        p.title.toLowerCase().includes(q) ||
-        p.topic.toLowerCase().includes(q) ||
-        (p.companies && p.companies.some((c) => c.toLowerCase().includes(q)));
+      const matchSearch = p.title.toLowerCase().includes(q);
 
       // Difficulty Binds
       const matchDiff = filterDifficulty === "All" || p.difficulty === filterDifficulty;
-
-      // Topic Binds
-      const matchTopic =
-        filterTopic === "All" ||
-        p.topic.toLowerCase().includes(filterTopic.toLowerCase());
-
-      // Company Binds
-      const matchCompany =
-        filterCompany === "All" ||
-        (p.companies && p.companies.some((c) => c.toLowerCase() === filterCompany.toLowerCase()));
 
       // Status Binds
       const isActive = p.status !== "inactive";
@@ -157,9 +158,9 @@ export function AdminProblemsPage() {
         (filterStatus === "active" && isActive) ||
         (filterStatus === "inactive" && !isActive);
 
-      return matchSearch && matchDiff && matchTopic && matchCompany && matchStatus;
+      return matchSearch && matchDiff && matchStatus;
     });
-  }, [problems, searchQuery, filterDifficulty, filterTopic, filterCompany, filterStatus]);
+  }, [problems, searchQuery, filterDifficulty, filterStatus]);
 
   // Paginated List
   const totalPages = Math.ceil(filteredProblems.length / itemsPerPage) || 1;
@@ -171,7 +172,7 @@ export function AdminProblemsPage() {
   // Reset page on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterDifficulty, filterTopic, filterCompany, filterStatus]);
+  }, [searchQuery, filterDifficulty, filterStatus]);
 
   // Copy Link action
   const handleCopyUrl = (url?: string) => {
@@ -383,7 +384,47 @@ export function AdminProblemsPage() {
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-muted-foreground text-xs font-semibold">Loading problems repository database...</div>;
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto text-left animate-pulse">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-28" />
+            <Skeleton className="h-9 w-32" />
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="p-4 rounded-xl border border-border bg-card space-y-2">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-6 w-10" />
+            </div>
+          ))}
+        </div>
+
+        {/* Search filters */}
+        <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-4">
+          <div className="flex gap-4 items-center">
+            <Skeleton className="h-9 flex-1" />
+            <div className="flex gap-2 w-72">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Table skeleton */}
+        <div className="border border-border bg-card rounded-xl overflow-hidden h-96">
+          <Skeleton className="h-full w-full" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -441,7 +482,7 @@ export function AdminProblemsPage() {
       <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
           <SearchInput
-            placeholder="Search Title, Topic, or Company tags..."
+            placeholder="Search Title..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 text-xs h-9"
@@ -460,28 +501,6 @@ export function AdminProblemsPage() {
             </select>
 
             <select
-              value={filterTopic}
-              onChange={(e) => setFilterTopic(e.target.value)}
-              className="h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring font-medium select-none"
-            >
-              <option value="All">All Topics</option>
-              {AVAILABLE_TOPICS.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-
-            <select
-              value={filterCompany}
-              onChange={(e) => setFilterCompany(e.target.value)}
-              className="h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring font-medium select-none"
-            >
-              <option value="All">All Companies</option>
-              {AVAILABLE_COMPANIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-
-            <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               className="h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring font-medium select-none"
@@ -496,24 +515,22 @@ export function AdminProblemsPage() {
 
       {/* PROBLEM DATA TABLE */}
       <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-y-auto max-h-[calc(100vh-320px)] overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground select-none">
-                <th className="px-4 py-3 w-12 text-center">Status</th>
-                <th className="px-4 py-3">Problem Name</th>
-                <th className="px-4 py-3 w-28">Difficulty</th>
-                <th className="px-4 py-3 w-36">Topics</th>
-                <th className="px-4 py-3 w-36">Companies</th>
-                <th className="px-4 py-3 w-24 text-center">Outlink</th>
-                <th className="px-4 py-3 w-32">Created At</th>
-                <th className="px-4 py-3 text-center w-28">Actions</th>
+              <tr className="border-b border-border text-xs font-semibold text-muted-foreground select-none">
+                <th className="px-4 py-3 w-16 text-center bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Status</th>
+                <th className="px-4 py-3 bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Problem Name</th>
+                <th className="px-4 py-3 w-28 text-center bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Practice</th>
+                <th className="px-4 py-3 w-28 bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Difficulty</th>
+                <th className="px-4 py-3 w-32 bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Created At</th>
+                <th className="px-4 py-3 text-center w-28 bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-sm">
               {paginatedProblems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
                     <div className="max-w-md mx-auto space-y-2">
                       <Database className="size-8 text-muted-foreground/60 mx-auto" />
                       <p className="font-semibold text-foreground">No Problems Found</p>
@@ -528,37 +545,22 @@ export function AdminProblemsPage() {
 
                   return (
                     <tr key={prob.id} className="hover:bg-muted/10 transition-colors">
-                      <td className="px-4 py-3.5 text-center" title={isActive ? "Active" : "Inactive"}>
-                        {isActive ? (
-                          <CheckCircle2 className="size-4 text-emerald-500 mx-auto" />
-                        ) : (
-                          <XCircle className="size-4 text-rose-400 mx-auto" />
-                        )}
+                      <td className="px-4 py-3.5 text-center">
+                        <button
+                          onClick={() => handleToggleStatus(prob)}
+                          className="p-1 rounded hover:bg-muted transition-all cursor-pointer inline-flex items-center justify-center"
+                          title={`Click to toggle status (Current: ${isActive ? "Active" : "Inactive"})`}
+                        >
+                          {isActive ? (
+                            <CheckCircle2 className="size-4 text-emerald-500 mx-auto" />
+                          ) : (
+                            <XCircle className="size-4 text-rose-400 mx-auto" />
+                          )}
+                        </button>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 text-left">
                         <span className="font-semibold text-foreground block">{prob.title}</span>
                         <span className="text-[10px] text-muted-foreground font-mono block mt-0.5">ID: {prob.id}</span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className={cn("text-xs font-semibold rounded-full px-2 py-0.5", difficultyColors[prob.difficulty])}>
-                          {prob.difficulty}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium max-w-[150px] truncate" title={prob.topic}>
-                        {prob.topic}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex flex-wrap gap-1 max-w-[150px]">
-                          {prob.companies && prob.companies.length > 0 ? (
-                            prob.companies.map((c) => (
-                              <span key={c} className="text-[9px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold px-1.5 py-0.5 rounded">
-                                {c}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-muted-foreground text-xs font-medium">-</span>
-                          )}
-                        </div>
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         {prob.leetcodeUrl ? (
@@ -566,16 +568,25 @@ export function AdminProblemsPage() {
                             href={prob.leetcodeUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-1 rounded text-muted-foreground hover:bg-muted inline-flex items-center"
+                            className="inline-flex p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all shadow-sm cursor-pointer justify-center items-center"
                             title="Open in LeetCode"
                           >
-                            <ExternalLink className="size-3.5" />
+                            <img
+                              src={leetcodeLogo}
+                              alt="LeetCode"
+                              className="size-4 dark:invert object-contain"
+                            />
                           </a>
                         ) : (
                           <span className="text-muted-foreground text-xs">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                      <td className="px-4 py-3.5 text-left">
+                        <span className={cn("text-xs font-semibold rounded-full px-2 py-0.5 border", difficultyColors[prob.difficulty])}>
+                          {prob.difficulty}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground text-left">
                         {createdDate}
                       </td>
                       <td className="px-4 py-3.5">
