@@ -11,6 +11,8 @@ import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 import { cn } from "@/lib/utils";
+import { StatusChangeModal } from "@/components/common/StatusChangeModal";
+import { PomodoroPromptModal } from "@/components/common/PomodoroPromptModal";
 import {
   Bookmark,
   FileText,
@@ -52,7 +54,8 @@ export function BookmarksPage() {
   // Modals state
   const [activeNoteProblemId, setActiveNoteProblemId] = useState<string | null>(null);
   const [activeNoteText, setActiveNoteText] = useState("");
-  const [activeStatusProblemId, setActiveStatusProblemId] = useState<string | null>(null);
+  const [statusModalProblem, setStatusModalProblem] = useState<{ id: string; title: string } | null>(null);
+  const [pomodoroPromptProblem, setPomodoroPromptProblem] = useState<{ id: string; title: string; difficulty: string; leetcodeUrl: string } | null>(null);
   const [savingNote, setSavingNote] = useState(false);
 
   const addToast = useNotificationStore((state: any) => state.addToast);
@@ -166,88 +169,8 @@ export function BookmarksPage() {
     setActiveNoteProblemId(null);
   };
 
-  const handleOpenStatusModal = (probId: string) => {
-    setActiveStatusProblemId(probId);
-  };
-
-  const handleStatusChange = async (newStatus: string) => {
-    if (!activeStatusProblemId) return;
-
-    try {
-      let revs = JSON.parse(localStorage.getItem("mock_revisions") || "[]");
-      let subs = JSON.parse(localStorage.getItem("mock_submissions") || "[]");
-      const todayStr = new Date().toISOString();
-
-      if (newStatus === "Not Started") {
-        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
-        subs = subs.filter((s: any) => s.problemId !== activeStatusProblemId);
-      } 
-      else if (newStatus === "Attempted") {
-        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
-        subs = subs.filter((s: any) => s.problemId !== activeStatusProblemId);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId: activeStatusProblemId,
-          status: "Wrong Answer",
-          submittedAt: todayStr,
-        });
-      } 
-      else if (newStatus === "Solved") {
-        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId: activeStatusProblemId,
-          status: "Correct",
-          submittedAt: todayStr,
-        });
-      } 
-      else if (newStatus === "Needs Revision") {
-        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
-        revs.push({
-          id: `rev-${Math.random()}`,
-          userId: "usr-2",
-          problemId: activeStatusProblemId,
-          nextReviewDate: todayStr,
-          status: "todo",
-          interval: 1,
-        });
-      } 
-      else if (newStatus === "Revised Once") {
-        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
-        revs.push({
-          id: `rev-${Math.random()}`,
-          userId: "usr-2",
-          problemId: activeStatusProblemId,
-          nextReviewDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-          status: "todo",
-          interval: 3,
-        });
-      } 
-      else if (newStatus === "Mastered") {
-        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
-        revs.push({
-          id: `rev-${Math.random()}`,
-          userId: "usr-2",
-          problemId: activeStatusProblemId,
-          nextReviewDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-          status: "todo",
-          interval: 15,
-        });
-      }
-
-      localStorage.setItem("mock_revisions", JSON.stringify(revs));
-      localStorage.setItem("mock_submissions", JSON.stringify(subs));
-      
-      setRevisions(revs);
-      setSubmissions(subs);
-      addToast(`Status updated to: ${newStatus}`, "success");
-    } catch {
-      addToast("Failed to update status.", "error");
-    } finally {
-      setActiveStatusProblemId(null);
-    }
+  const handleOpenStatusModal = (id: string, title: string) => {
+    setStatusModalProblem({ id, title });
   };
 
   const processedProblems = useMemo(() => {
@@ -385,7 +308,7 @@ export function BookmarksPage() {
                     <tr key={prob.id} className="hover:bg-muted/10 transition-colors">
                       <td className="px-4 py-3.5 text-center">
                         <button
-                          onClick={() => handleOpenStatusModal(prob.id)}
+                          onClick={() => handleOpenStatusModal(prob.id, prob.title)}
                           className="p-1 rounded hover:bg-muted transition-all cursor-pointer inline-flex items-center justify-center"
                           title={`Click to adjust status (Current: ${stat.text})`}
                         >
@@ -407,15 +330,19 @@ export function BookmarksPage() {
                         <button
                           onClick={() => {
                             const slug = prob.title.toLowerCase().replace(/ /g, "-");
-                            window.open(`https://leetcode.com/problems/${slug}/`, "_blank");
-                            addToast(`Opening LeetCode for "${prob.title}"...`, "info");
+                            setPomodoroPromptProblem({
+                              id: prob.id,
+                              title: prob.title,
+                              difficulty: prob.difficulty,
+                              leetcodeUrl: `https://leetcode.com/problems/${slug}/`
+                            });
                           }}
                           className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all cursor-pointer inline-flex items-center justify-center shadow-sm"
                         >
                           <img
                             src={leetcodeLogo}
                             alt="LeetCode"
-                            className="size-6 object-contain"
+                            className="size-4 dark:invert object-contain"
                           />
                         </button>
                       </td>
@@ -505,25 +432,26 @@ export function BookmarksPage() {
         </div>
       </Dialog>
 
-      {/* Adjust Status Dialog */}
-      <Dialog
-        isOpen={activeStatusProblemId !== null}
-        onClose={() => setActiveStatusProblemId(null)}
-        title="Adjust Progress Status"
-        description="Select the corresponding study tracking status for this problem."
-      >
-        <div className="grid grid-cols-2 gap-2 pt-2 text-left">
-          {["Not Started", "Attempted", "Solved", "Needs Revision", "Revised Once", "Mastered"].map((statusOption) => (
-            <button
-              key={statusOption}
-              onClick={() => handleStatusChange(statusOption)}
-              className="px-3 py-2 rounded-lg border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-all cursor-pointer text-left"
-            >
-              {statusOption}
-            </button>
-          ))}
-        </div>
-      </Dialog>
+      {/* Centralized Status Log Modal */}
+      <StatusChangeModal
+        isOpen={statusModalProblem !== null}
+        onClose={() => setStatusModalProblem(null)}
+        problemId={statusModalProblem?.id || null}
+        problemTitle={statusModalProblem?.title || null}
+        onStatusUpdated={() => {
+          loadData(); // reload layout records
+        }}
+      />
+
+      {/* Pomodoro Prompt Modal */}
+      <PomodoroPromptModal
+        isOpen={pomodoroPromptProblem !== null}
+        onClose={() => setPomodoroPromptProblem(null)}
+        problemId={pomodoroPromptProblem?.id || null}
+        problemTitle={pomodoroPromptProblem?.title || null}
+        difficulty={pomodoroPromptProblem?.difficulty || ""}
+        leetcodeUrl={pomodoroPromptProblem?.leetcodeUrl || ""}
+      />
     </div>
   );
 }

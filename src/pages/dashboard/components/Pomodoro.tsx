@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNotificationStore } from "@/stores/notification.store";
+import { usePomodoroStore, type TimerMode } from "@/stores/pomodoro.store";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,68 +14,39 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type TimerMode = "work" | "short" | "long";
-
 export function Pomodoro() {
-  const [mode, setMode] = useState<TimerMode>("work");
-  const [isActive, setIsActive] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false);
+  const {
+    isActive,
+    timeLeft,
+    totalDuration,
+    mode,
+    activeProblemTitle,
+    isFullScreen,
+    modeTimes,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    setMode,
+    setFullScreen,
+    setCustomDuration,
+  } = usePomodoroStore();
+
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [customMins, setCustomMins] = useState("25");
 
-  const [modeTimes, setModeTimes] = useState<Record<TimerMode, number>>({
-    work: 25 * 60,
-    short: 5 * 60,
-    long: 15 * 60,
-  });
-
-  const [timeLeft, setTimeLeft] = useState(modeTimes.work);
   const addToast = useNotificationStore((state: any) => state.addToast);
-  const timerRef = useRef<any>(null);
 
-  // Sync time when mode changes or custom durations are saved
+  // Sync custom mins with mode duration
   useEffect(() => {
-    setTimeLeft(modeTimes[mode]);
-    setIsActive(false);
-    if (timerRef.current) clearInterval(timerRef.current);
+    setCustomMins(String(Math.round(modeTimes[mode] / 60)));
   }, [mode, modeTimes]);
 
-  // Handle countdown intervals
-  useEffect(() => {
+  const toggleTimer = () => {
     if (isActive) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            setIsActive(false);
-            if (timerRef.current) clearInterval(timerRef.current);
-            
-            // Alarm feedbacks
-            const alerts = {
-              work: "Pomodoro Focus block completed! Time for a short rest.",
-              short: "Break completed! Ready to focus on the next algorithm?",
-              long: "Long break completed! Let's resume solving.",
-            };
-            addToast(alerts[mode], "info");
-            
-            return modeTimes[mode];
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      pauseTimer();
     } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+      startTimer();
     }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isActive, mode, modeTimes, addToast]);
-
-  const toggleTimer = () => setIsActive(!isActive);
-
-  const resetTimer = () => {
-    setIsActive(false);
-    setTimeLeft(modeTimes[mode]);
   };
 
   const handleApplyCustomTime = (e: React.FormEvent) => {
@@ -85,10 +57,7 @@ export function Pomodoro() {
       return;
     }
     
-    setModeTimes((prev) => ({
-      ...prev,
-      [mode]: mins * 60,
-    }));
+    setCustomDuration(mode, mins);
     setIsCustomizing(false);
     addToast(`Focus session set to ${mins} minutes.`, "success");
   };
@@ -100,7 +69,6 @@ export function Pomodoro() {
   };
 
   // Progress calculations
-  const totalDuration = modeTimes[mode];
   const progressPercent = ((totalDuration - timeLeft) / totalDuration) * 100;
 
   return (
@@ -114,7 +82,7 @@ export function Pomodoro() {
           </Typography>
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setIsFullScreen(true)}
+              onClick={() => setFullScreen(true)}
               className="p-1 rounded text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-all"
               title="Fullscreen timer"
             >
@@ -174,6 +142,12 @@ export function Pomodoro() {
           <p className="text-4xl font-mono font-light tracking-wider text-foreground">
             {formatTime(timeLeft)}
           </p>
+
+          {activeProblemTitle && (
+            <p className="text-[10px] text-indigo-500 font-semibold mt-1 truncate max-w-full" title={activeProblemTitle}>
+              Target: {activeProblemTitle}
+            </p>
+          )}
           
           {/* Progress tracker */}
           <div className="w-full h-1 bg-muted rounded-full mt-4 overflow-hidden">
@@ -230,7 +204,7 @@ export function Pomodoro() {
         <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col items-center justify-center p-6 space-y-12 animate-in fade-in duration-200">
           {/* Minimize / Close trigger */}
           <button
-            onClick={() => setIsFullScreen(false)}
+            onClick={() => setFullScreen(false)}
             className="absolute top-6 right-6 size-10 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer shadow-sm hover:scale-105 transition-all"
             title="Minimize fullscreen timer"
           >
@@ -243,7 +217,9 @@ export function Pomodoro() {
               {mode === "work" ? "Focus Block active" : "Break time resting"}
             </span>
             <h1 className="text-2xl font-semibold tracking-tight text-muted-foreground mt-2">
-              {mode === "work" ? "Tackle your algorithm objectives" : "Let your structural memory consolidate"}
+              {mode === "work" 
+                ? (activeProblemTitle ? `Focusing on: ${activeProblemTitle}` : "Tackle your algorithm objectives")
+                : "Let your structural memory consolidate"}
             </h1>
           </div>
 
@@ -302,7 +278,6 @@ export function Pomodoro() {
               
               <Button
                 onClick={resetTimer}
-                variant="outline"
                 size="lg"
                 className="border border-border size-12 p-0 flex items-center justify-center rounded-xl cursor-pointer hover:bg-muted"
                 title="Reset timer"
