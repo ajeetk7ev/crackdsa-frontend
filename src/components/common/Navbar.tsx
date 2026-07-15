@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { useThemeStore } from "@/stores/theme.store";
 import { useAuthStore } from "@/stores/auth.store";
-import { Sun, Moon, Bell, Search, Menu, Command, Sparkles } from "lucide-react";
+import { Sun, Moon, Bell, Menu, Sparkles, User, Settings, LogOut } from "lucide-react";
 
 interface NavbarProps {
   onMenuToggle: () => void;
@@ -11,8 +11,10 @@ interface NavbarProps {
 export function Navbar({ onMenuToggle }: NavbarProps) {
   const { theme, toggleTheme } = useThemeStore();
   const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Parse path segments for breadcrumbs
   const pathnames = location.pathname.split("/").filter((x) => x);
@@ -62,20 +64,6 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
 
       {/* Control panel (Right side) */}
       <div className="flex items-center gap-4">
-        {/* Simulated Ctrl+K Global Search Trigger */}
-        <div className="relative hidden md:flex items-center">
-          <Search className="absolute left-2.5 size-4 text-muted-foreground pointer-events-none" />
-          <button
-            onClick={() => useThemeStore.getState().setTheme(theme === "dark" ? "light" : "dark")}
-            className="flex h-9 w-44 items-center justify-between rounded-lg border border-border bg-background px-3 py-1 pl-9 text-xs text-muted-foreground shadow-sm transition-all hover:bg-muted/30 focus-visible:border-ring outline-none select-none cursor-pointer"
-          >
-            <span>Search problems...</span>
-            <kbd className="inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-sm">
-              <Command className="size-2.5" /> K
-            </kbd>
-          </button>
-        </div>
-
         {/* Theme Toggle Button */}
         <button
           onClick={() => toggleTheme()}
@@ -131,9 +119,65 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
           )}
         </div>
 
-        {/* Profile Avatar */}
-        <div className="size-8 rounded-full bg-muted flex items-center justify-center font-bold text-sm text-muted-foreground border border-border select-none uppercase">
-          {user?.name?.[0] || "U"}
+        {/* Profile Avatar Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowProfileMenu((prev) => !prev)}
+            className="size-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center font-bold text-sm text-muted-foreground border border-border select-none uppercase cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none"
+            title="User Profile Menu"
+          >
+            {user?.name?.[0] || "U"}
+          </button>
+
+          {showProfileMenu && (
+            <>
+              {/* Overlay to close on outside click */}
+              <div
+                onClick={() => setShowProfileMenu(false)}
+                className="fixed inset-0 z-40"
+              />
+              
+              {/* Dropdown Menu */}
+              <div className="absolute right-0 mt-2 z-50 w-48 rounded-xl border border-border bg-card p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150 text-left">
+                {/* User Info Header */}
+                <div className="px-3 py-2 border-b border-border mb-1">
+                  <p className="text-xs font-semibold text-foreground truncate">{user?.name || "User"}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{user?.email || "user@example.com"}</p>
+                </div>
+
+                <Link
+                  to="/profile"
+                  onClick={() => setShowProfileMenu(false)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors font-medium"
+                >
+                  <User className="size-3.5" />
+                  My Profile
+                </Link>
+
+                <Link
+                  to="/settings"
+                  onClick={() => setShowProfileMenu(false)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors font-medium"
+                >
+                  <Settings className="size-3.5" />
+                  Profile Settings
+                </Link>
+
+                <div className="my-1 border-t border-border/40" />
+
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    logout();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors font-semibold cursor-pointer text-left gap-2"
+                >
+                  <LogOut className="size-3.5" />
+                  Logout
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>
