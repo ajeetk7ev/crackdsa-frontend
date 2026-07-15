@@ -33,7 +33,7 @@ export function DashboardLayout() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* 1. Sidebar Container */}
       <Sidebar
         isOpenOnMobile={mobileMenuOpen}

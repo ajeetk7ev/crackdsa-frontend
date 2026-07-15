@@ -96,7 +96,7 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
         )}
       >
         {/* Brand Header */}
-        <div className="flex h-14 items-center justify-between px-4 border-b border-border">
+        <div className="relative flex h-14 items-center justify-between px-4 border-b border-border">
           {!isCollapsed && (
             <div className="flex items-center gap-2 font-semibold text-lg text-foreground tracking-tight select-none">
               <span className="bg-primary text-primary-foreground size-6 rounded-md flex items-center justify-center font-bold text-xs">
@@ -110,12 +110,14 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
               C
             </div>
           )}
-          {/* Collapse toggle (desktop only) */}
+          
+          {/* Collapse toggle (desktop only) - floats on border line in between sidebar and header corner */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:flex p-1 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+            className="hidden lg:flex absolute top-4 -right-3 z-50 size-6 bg-card border border-border rounded-full items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer shadow-sm hover:scale-105 transition-all animate-in fade-in duration-200"
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+            {isCollapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
           </button>
         </div>
 
@@ -126,35 +128,19 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
           {user?.role === "admin" && renderNavGroup("Management", adminNav)}
         </div>
 
-        {/* Footer Profile area */}
+        {/* Footer Area - Logout Only */}
         <div className="p-3 border-t border-border mt-auto">
-          <div
+          <button
+            onClick={() => logout()}
             className={cn(
-              "flex items-center gap-3",
-              isCollapsed ? "justify-center" : "px-2"
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
+              isCollapsed ? "justify-center" : ""
             )}
+            title="Sign Out"
           >
-            <div className="size-8 rounded-full bg-muted flex items-center justify-center font-semibold text-sm text-muted-foreground border border-border select-none uppercase shrink-0">
-              {user?.name?.[0] || "U"}
-            </div>
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate">
-                  {user?.name || "User Account"}
-                </p>
-                <p className="text-[10px] text-muted-foreground truncate leading-none mt-0.5">
-                  {user?.email || "user@email.com"}
-                </p>
-              </div>
-            )}
-            <button
-              onClick={() => logout()}
-              className="p-1 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0 cursor-pointer"
-              title="Sign Out"
-            >
-              <LogOut className="size-4" />
-            </button>
-          </div>
+            <LogOut className="size-4 shrink-0" />
+            {!isCollapsed && <span className="truncate">Logout</span>}
+          </button>
         </div>
       </aside>
     </>
