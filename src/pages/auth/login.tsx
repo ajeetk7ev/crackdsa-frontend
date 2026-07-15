@@ -5,13 +5,17 @@ import { Typography } from "@/components/ui/typography";
 import { Input, PasswordInput } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { LogIn, Sparkles } from "lucide-react";
+import { useNotificationStore } from "@/stores/notification.store";
+import { api } from "@/lib/axios";
+import { LogIn, Sparkles, Lightbulb } from "lucide-react";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { login, isLoading } = useAuthStore();
+  const checkAuth = useAuthStore((state: any) => state.checkAuth);
+  const addToast = useNotificationStore((state: any) => state.addToast);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,20 +47,70 @@ export function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setError("");
+    addToast("Connecting with Google Secure OAuth...", "info");
+    try {
+      const response = await api.post("/auth/google");
+      const { token, user } = response.data;
+      
+      localStorage.setItem("crackdsa-token", token);
+      localStorage.setItem("crackdsa-user", JSON.stringify(user));
+      
+      // Sync store state
+      await checkAuth();
+      addToast(`Logged in successfully via Google! Welcome back, ${user.name}.`, "success");
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError("Google authentication failed. Please try again.");
+      addToast("Failed to authenticate with Google.", "error");
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
+      
+      {/* Title */}
       <div className="space-y-2">
-        <Typography variant="h1" className="font-semibold tracking-tight text-foreground text-left">
-          Welcome Back
+        <Typography variant="h1" className="font-bold tracking-tight text-foreground text-left text-2xl md:text-3xl">
+          Resume Your DSA Journey
         </Typography>
-        <Typography variant="muted" className="text-left block">
-          Enter credentials below to resume revisions.
+        <Typography variant="muted" className="text-left text-xs md:text-sm block">
+          Mastery requires consistency. Sign in to review today's due problems and log new solutions.
         </Typography>
       </div>
 
+      {/* Google Authentication Button */}
+      <Button
+        variant="outline"
+        type="button"
+        onClick={handleGoogleLogin}
+        disabled={isLoading}
+        className="w-full h-10 cursor-pointer text-xs font-semibold flex items-center justify-center gap-2 border border-border bg-card hover:bg-muted/50 text-foreground transition-all shadow-sm rounded-lg"
+      >
+        <svg className="size-4 shrink-0" viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+        </svg>
+        Continue with Google
+      </Button>
+
+      {/* Divider */}
+      <div className="relative flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border/80" />
+        </div>
+        <div className="relative bg-background px-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider select-none">
+          Or continue with email
+        </div>
+      </div>
+
+      {/* Login Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1 text-left">
-          <Typography variant="subtitle" className="text-[12px] uppercase tracking-wider text-muted-foreground">
+          <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
             Email Address
           </Typography>
           <Input
@@ -66,17 +120,18 @@ export function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
             required
+            className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
         </div>
 
         <div className="space-y-1 text-left">
           <div className="flex items-center justify-between">
-            <Typography variant="subtitle" className="text-[12px] uppercase tracking-wider text-muted-foreground">
+            <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
               Password
             </Typography>
             <Link
               to="/auth/forgot-password"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               Forgot password?
             </Link>
@@ -87,11 +142,12 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}
             required
+            className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
         </div>
 
         {error && (
-          <p className="text-xs text-destructive font-medium animate-in fade-in slide-in-from-top-1 text-left">
+          <p className="text-xs text-destructive font-semibold animate-in fade-in slide-in-from-top-1 text-left">
             {error}
           </p>
         )}
@@ -102,23 +158,21 @@ export function LoginPage() {
 
         <Button
           type="submit"
-          className="w-full h-9 cursor-pointer mt-2"
+          className="w-full h-10 cursor-pointer mt-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-lg text-sm flex items-center justify-center gap-1.5"
           disabled={isLoading}
         >
           {isLoading ? "Signing In..." : "Sign In"}
-          <LogIn className="size-4 ml-1" />
+          <LogIn className="size-4" />
         </Button>
       </form>
 
       {/* Guest Login buttons */}
-      <div className="relative pt-4">
+      <div className="relative pt-2">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
+          <span className="w-full border-t border-border/80" />
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
-            Or quick demo login
-          </span>
+        <div className="relative flex justify-center text-[10px] uppercase font-bold text-muted-foreground tracking-wider select-none bg-background px-3">
+          Or quick demo login
         </div>
       </div>
 
@@ -129,9 +183,9 @@ export function LoginPage() {
           type="button"
           onClick={() => handleQuickLogin("student")}
           disabled={isLoading}
-          className="text-xs cursor-pointer"
+          className="text-[11px] font-semibold cursor-pointer border border-border/80 rounded-lg hover:bg-muted/40 text-foreground"
         >
-          <Sparkles className="size-3 text-amber-500 mr-1" /> Student Demo
+          <Sparkles className="size-3 text-amber-500 mr-1 shrink-0" /> Student Demo
         </Button>
         <Button
           variant="outline"
@@ -139,10 +193,20 @@ export function LoginPage() {
           type="button"
           onClick={() => handleQuickLogin("admin")}
           disabled={isLoading}
-          className="text-xs cursor-pointer"
+          className="text-[11px] font-semibold cursor-pointer border border-border/80 rounded-lg hover:bg-muted/40 text-foreground"
         >
-          <Sparkles className="size-3 text-indigo-500 mr-1" /> Admin Demo
+          <Sparkles className="size-3 text-indigo-500 mr-1 shrink-0" /> Admin Demo
         </Button>
+      </div>
+
+      {/* Tip Box Context */}
+      <div className="p-3 border border-border/60 bg-muted/20 dark:bg-muted/5 rounded-xl text-left space-y-1.5">
+        <span className="text-[10px] font-bold text-indigo-500 flex items-center gap-1">
+          <Lightbulb className="size-3.5" /> Interview Prep Tip
+        </span>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Active recall triggers the Ebbinghaus retention threshold. Try coding from scratch for 15 minutes before referencing past solutions.
+        </p>
       </div>
 
       <p className="text-xs text-center text-muted-foreground">

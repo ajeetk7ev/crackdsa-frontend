@@ -317,6 +317,54 @@ api.defaults.adapter = async (config) => {
       responseData = { message: "Password updated successfully" };
     }
 
+    else if (cleanUrl === "/auth/google" && method === "post") {
+      const users = getDB("mock_users");
+      let found = users.find((u: any) => u.email === "google.user@developer.com");
+      if (!found) {
+        found = {
+          id: "usr-google",
+          email: "google.user@developer.com",
+          password: "OAuthPassword123",
+          name: "Google Developer",
+          role: "student",
+        };
+        users.push(found);
+        setDB("mock_users", users);
+        
+        // Seed initial revision cards for this google user so they see due items in dashboard
+        const revisions = getDB("mock_revisions");
+        const hasSeeds = revisions.some((r: any) => r.userId === "usr-google");
+        if (!hasSeeds) {
+          revisions.push({
+            id: "rev-g1",
+            userId: "usr-google",
+            problemId: "146", // LRU Cache
+            nextReviewDate: new Date().toISOString(), // due now
+            interval: 1,
+            easeFactor: 2.5,
+            repetitions: 1,
+            status: "todo",
+          });
+          revisions.push({
+            id: "rev-g2",
+            userId: "usr-google",
+            problemId: "023", // Merge k Sorted
+            nextReviewDate: new Date(Date.now() - 3600000).toISOString(), // due
+            interval: 2,
+            easeFactor: 2.4,
+            repetitions: 1,
+            status: "todo",
+          });
+          setDB("mock_revisions", revisions);
+        }
+      }
+      responseData = {
+        token: found.id,
+        user: { id: found.id, name: found.name, email: found.email, role: found.role },
+      };
+    }
+
+
     // ------------------------------------------
     // Problem Directory CRUD
     // ------------------------------------------
