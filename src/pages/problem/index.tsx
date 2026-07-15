@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
 import { Typography } from "@/components/ui/typography";
@@ -14,7 +14,6 @@ import {
   Bookmark,
   FileText,
   Eye,
-  ExternalLink,
   XCircle,
   RotateCcw,
   Circle,
@@ -43,6 +42,7 @@ interface RevisionItem {
 
 export function ProblemsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   // Data State
   const [problems, setProblems] = useState<Problem[]>([]);
@@ -63,12 +63,20 @@ export function ProblemsPage() {
   // URL State values
   const searchQuery = searchParams.get("search") || "";
   const filterDifficulty = searchParams.get("difficulty") || "All";
-  const filterTopic = searchParams.get("topic") || "All";
   const filterStatus = searchParams.get("status") || "All";
   const sortBy = searchParams.get("sort") || "id";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   const pageSize = 8;
+
+  // Select a random problem and redirect
+  const handleRandomProblem = () => {
+    if (problems.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * problems.length);
+    const randomProb = problems[randomIndex];
+    addToast(`Selected random problem: "${randomProb.title}"`, "info");
+    navigate(`/problems/${randomProb.id}`);
+  };
 
   // Load Data
   const loadExplorerData = async () => {
@@ -351,10 +359,6 @@ export function ProblemsPage() {
       result = result.filter((p) => p.difficulty === filterDifficulty);
     }
 
-    if (filterTopic !== "All") {
-      result = result.filter((p) => p.topic === filterTopic);
-    }
-
     if (filterStatus !== "All") {
       result = result.filter((p) => {
         const stat = getProblemStatus(p.id);
@@ -372,7 +376,7 @@ export function ProblemsPage() {
     });
 
     return result;
-  }, [problems, revisions, submissions, bookmarks, searchQuery, filterDifficulty, filterTopic, filterStatus, sortBy]);
+  }, [problems, revisions, submissions, bookmarks, searchQuery, filterDifficulty, filterStatus, sortBy]);
 
   // Pagination bounds
   const totalItems = processedProblems.length;
@@ -388,7 +392,7 @@ export function ProblemsPage() {
   }).length;
   const percentComplete = problems.length > 0 ? Math.ceil((solvedCount / problems.length) * 100) : 0;
 
-  const topicsList = ["Array", "Linked List", "Sliding Window", "DFS Tree", "Dynamic Programming", "Design"];
+
 
   if (loading) {
     return (
@@ -469,15 +473,6 @@ export function ProblemsPage() {
 
           <Select
             options={[
-              { value: "All", label: "Topic: All" },
-              ...topicsList.map((t) => ({ value: t, label: t })),
-            ]}
-            value={filterTopic}
-            onChange={(e) => updateQueryParam("topic", e.target.value)}
-          />
-
-          <Select
-            options={[
               { value: "All", label: "Status: All" },
               { value: "Not Started", label: "Not Started" },
               { value: "Attempted", label: "Attempted" },
@@ -500,6 +495,13 @@ export function ProblemsPage() {
             value={sortBy}
             onChange={(e) => updateQueryParam("sort", e.target.value)}
           />
+
+          <Button
+            onClick={handleRandomProblem}
+            className="text-xs bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm h-9"
+          >
+            🎲 Pick Random
+          </Button>
         </div>
       </div>
 
@@ -509,11 +511,11 @@ export function ProblemsPage() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground select-none">
-                <th className="px-4 py-3 text-center w-12">S</th>
-                <th className="px-4 py-3 w-16">ID</th>
-                <th className="px-4 py-3">Problem Title</th>
+                <th className="px-4 py-3 text-center w-16">Status</th>
+                <th className="px-4 py-3 w-20">ID</th>
+                <th className="px-4 py-3">Problem</th>
+                <th className="px-4 py-3 text-center w-24">Practice</th>
                 <th className="px-4 py-3 w-28">Difficulty</th>
-                <th className="px-4 py-3 w-32">Topic</th>
                 <th className="px-4 py-3 w-36">Next Revision</th>
                 <th className="px-4 py-3 text-center w-28">Actions</th>
               </tr>
@@ -574,25 +576,34 @@ export function ProblemsPage() {
                         {prob.id}
                       </td>
                       <td className="px-4 py-3.5">
-                        <a
-                          href={`https://leetcode.com/problems/${prob.title.toLowerCase().replace(/ /g, "-")}/`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-semibold text-foreground hover:underline inline-flex items-center gap-1"
+                        <Link
+                          to={`/problems/${prob.id}`}
+                          className="font-semibold text-foreground hover:text-primary-hover hover:underline transition-colors"
                         >
                           {prob.title}
-                          <ExternalLink className="size-3 text-muted-foreground inline" />
-                        </a>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <button
+                          onClick={() => {
+                            const slug = prob.title.toLowerCase().replace(/ /g, "-");
+                            window.open(`https://leetcode.com/problems/${slug}/`, "_blank");
+                            addToast(`Opening LeetCode for "${prob.title}"...`, "info");
+                          }}
+                          className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all cursor-pointer inline-flex items-center justify-center shadow-sm text-amber-500"
+                          title="Solve on LeetCode"
+                        >
+                          <svg className="size-4 fill-current" viewBox="0 0 24 24">
+                            <path d="M13.483 0a1.374 1.374 0 0 0-.961.414l-9.055 9.063a1.503 1.503 0 0 0-.012 2.117l5.67 5.684a1.38 1.38 0 0 0 1.96 0L20.21 8.167a1.38 1.38 0 0 0 0-1.96l-5.677-5.69a1.37 1.37 0 0 0-.962-.417zM5.53 12.636a1.38 1.38 0 0 0 0 1.96l5.67 5.679a1.38 1.38 0 0 0 1.96 0l5.127-5.137a1.5 1.5 0 0 0-2.112-2.13l-4.01 4.02-3.606-3.606 2.116-2.126a1.5 1.5 0 0 0-2.112-2.13l-3.033 3.04z" />
+                          </svg>
+                        </button>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={cn("text-xs font-semibold rounded-full px-2 py-0.5", difficultyColors[prob.difficulty])}>
+                        <span className={cn("text-xs font-semibold rounded-full px-2 py-0.5 border", difficultyColors[prob.difficulty])}>
                           {prob.difficulty}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-xs text-text-secondary font-medium">
-                        {prob.topic}
-                      </td>
-                      <td className="px-4 py-3.5 text-xs">
+                      <td className="px-4 py-3.5 text-xs font-medium">
                         <span className={cn(
                           "font-medium",
                           reviewDateStr === "Due Today" ? "text-amber-500 font-semibold animate-pulse" : "text-muted-foreground"
