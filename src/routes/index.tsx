@@ -12,6 +12,7 @@ import { ForgotPasswordPage } from "@/pages/auth/forgot-password";
 import { ResetPasswordPage } from "@/pages/auth/reset-password";
 import { DashboardPage } from "@/pages/dashboard";
 import { ProblemsPage } from "@/pages/problem";
+import { BookmarksPage } from "@/pages/bookmarks";
 import { ProblemDetailsPage } from "@/pages/problem/details";
 import { RevisionPage } from "@/pages/revision";
 import { CollectionsPage } from "@/pages/collections";
@@ -45,6 +46,7 @@ export function AppRoutes() {
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/problems" element={<ProblemsPage />} />
+        <Route path="/bookmarks" element={<BookmarksPage />} />
         <Route path="/problems/:id" element={<ProblemDetailsPage />} />
         <Route path="/revision" element={<RevisionPage />} />
         <Route path="/collections" element={<CollectionsPage />} />

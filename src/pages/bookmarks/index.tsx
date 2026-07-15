@@ -1,0 +1,526 @@
+import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { api } from "@/lib/axios";
+import { useNotificationStore } from "@/stores/notification.store";
+import { Typography } from "@/components/ui/typography";
+import { SearchInput } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/loader";
+import { Dialog } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import {
+  Bookmark,
+  FileText,
+  Eye,
+  Circle,
+  AlertCircle,
+  CheckCircle2,
+  RefreshCw,
+  Award,
+} from "lucide-react";
+
+interface Problem {
+  id: string;
+  title: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  topic: string;
+}
+
+interface RevisionItem {
+  id: string;
+  problemId: string;
+  nextReviewDate: string;
+  status: "todo" | "completed";
+  interval: number;
+}
+
+export function BookmarksPage() {
+  const [problems, setProblems] = useState<Problem[]>([]);
+  const [revisions, setRevisions] = useState<RevisionItem[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterDifficulty, setFilterDifficulty] = useState("All");
+
+  // Modals state
+  const [activeNoteProblemId, setActiveNoteProblemId] = useState<string | null>(null);
+  const [activeNoteText, setActiveNoteText] = useState("");
+  const [activeStatusProblemId, setActiveStatusProblemId] = useState<string | null>(null);
+  const [savingNote, setSavingNote] = useState(false);
+
+  const addToast = useNotificationStore((state: any) => state.addToast);
+
+  const loadData = async () => {
+    try {
+      const [probRes, revRes] = await Promise.all([
+        api.get("/problems"),
+        api.get("/revisions"),
+      ]);
+      setProblems(probRes.data);
+      setRevisions(revRes.data);
+
+      setSubmissions(JSON.parse(localStorage.getItem("mock_submissions") || "[]"));
+      setBookmarks(JSON.parse(localStorage.getItem("crackdsa_bookmarks") || "[]"));
+      setNotes(JSON.parse(localStorage.getItem("mock_notes") || "{}"));
+    } catch {
+      addToast("Failed to fetch bookmarks workspace progress records.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleBookmarkToggle = (probId: string) => {
+    const updated = bookmarks.filter((id) => id !== probId);
+    setBookmarks(updated);
+    localStorage.setItem("crackdsa_bookmarks", JSON.stringify(updated));
+    addToast("Removed from bookmarks.", "info");
+  };
+
+  const getProblemStatus = (probId: string) => {
+    const revision = revisions.find((r) => r.problemId === probId);
+    const correctSub = submissions.filter((s) => s.problemId === probId && s.status === "Correct");
+    const hasFailed = submissions.some((s) => s.problemId === probId && s.status !== "Correct");
+
+    if (revision) {
+      if (revision.interval >= 15) {
+        return {
+          text: "Mastered",
+          color: "text-purple-600 dark:text-purple-400",
+          icon: <Award className="size-4 text-purple-500 mx-auto" />
+        };
+      }
+      if (revision.status === "todo") {
+        const isDue = new Date(revision.nextReviewDate).getTime() <= Date.now();
+        return isDue 
+          ? {
+              text: "Needs Revision",
+              color: "text-amber-600 dark:text-amber-400",
+              icon: <AlertCircle className="size-4 text-amber-500 mx-auto" />
+            }
+          : {
+              text: "Revised Once",
+              color: "text-blue-600 dark:text-blue-400",
+              icon: <RefreshCw className="size-4 text-blue-500 mx-auto" />
+            };
+      }
+      return {
+        text: "Revised Once",
+        color: "text-blue-600 dark:text-blue-400",
+        icon: <RefreshCw className="size-4 text-blue-500 mx-auto" />
+      };
+    }
+
+    if (correctSub.length > 0) {
+      return {
+        text: "Solved",
+        color: "text-emerald-600 dark:text-emerald-400",
+        icon: <CheckCircle2 className="size-4 text-emerald-500 mx-auto" />
+      };
+    }
+
+    if (hasFailed) {
+      return {
+        text: "Attempted",
+        color: "text-amber-500",
+        icon: <AlertCircle className="size-4 text-amber-400 mx-auto" />
+      };
+    }
+
+    return {
+      text: "Not Started",
+      color: "text-muted-foreground",
+      icon: <Circle className="size-4 text-muted-foreground/60 mx-auto" />
+    };
+  };
+
+  const handleOpenNoteModal = (probId: string) => {
+    setActiveNoteProblemId(probId);
+    const key = `usr-2_${probId}`;
+    setActiveNoteText(notes[key] || "");
+  };
+
+  const handleSaveNote = () => {
+    if (!activeNoteProblemId) return;
+    setSavingNote(true);
+
+    const updatedNotes = {
+      ...notes,
+      [`usr-2_${activeNoteProblemId}`]: activeNoteText,
+    };
+
+    setNotes(updatedNotes);
+    localStorage.setItem("mock_notes", JSON.stringify(updatedNotes));
+    addToast("Notes saved successfully.", "success");
+    setSavingNote(false);
+    setActiveNoteProblemId(null);
+  };
+
+  const handleOpenStatusModal = (probId: string) => {
+    setActiveStatusProblemId(probId);
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!activeStatusProblemId) return;
+
+    try {
+      let revs = JSON.parse(localStorage.getItem("mock_revisions") || "[]");
+      let subs = JSON.parse(localStorage.getItem("mock_submissions") || "[]");
+      const todayStr = new Date().toISOString();
+
+      if (newStatus === "Not Started") {
+        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
+        subs = subs.filter((s: any) => s.problemId !== activeStatusProblemId);
+      } 
+      else if (newStatus === "Attempted") {
+        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
+        subs = subs.filter((s: any) => s.problemId !== activeStatusProblemId);
+        subs.push({
+          id: `sub-${Math.random()}`,
+          userId: "usr-2",
+          problemId: activeStatusProblemId,
+          status: "Wrong Answer",
+          submittedAt: todayStr,
+        });
+      } 
+      else if (newStatus === "Solved") {
+        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
+        subs.push({
+          id: `sub-${Math.random()}`,
+          userId: "usr-2",
+          problemId: activeStatusProblemId,
+          status: "Correct",
+          submittedAt: todayStr,
+        });
+      } 
+      else if (newStatus === "Needs Revision") {
+        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
+        revs.push({
+          id: `rev-${Math.random()}`,
+          userId: "usr-2",
+          problemId: activeStatusProblemId,
+          nextReviewDate: todayStr,
+          status: "todo",
+          interval: 1,
+        });
+      } 
+      else if (newStatus === "Revised Once") {
+        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
+        revs.push({
+          id: `rev-${Math.random()}`,
+          userId: "usr-2",
+          problemId: activeStatusProblemId,
+          nextReviewDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+          status: "todo",
+          interval: 3,
+        });
+      } 
+      else if (newStatus === "Mastered") {
+        revs = revs.filter((r: any) => r.problemId !== activeStatusProblemId);
+        revs.push({
+          id: `rev-${Math.random()}`,
+          userId: "usr-2",
+          problemId: activeStatusProblemId,
+          nextReviewDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+          status: "todo",
+          interval: 15,
+        });
+      }
+
+      localStorage.setItem("mock_revisions", JSON.stringify(revs));
+      localStorage.setItem("mock_submissions", JSON.stringify(subs));
+      
+      setRevisions(revs);
+      setSubmissions(subs);
+      addToast(`Status updated to: ${newStatus}`, "success");
+    } catch {
+      addToast("Failed to update status.", "error");
+    } finally {
+      setActiveStatusProblemId(null);
+    }
+  };
+
+  const processedProblems = useMemo(() => {
+    let result = problems.filter((p) => bookmarks.includes(p.id));
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((p) => p.title.toLowerCase().includes(q) || p.topic.toLowerCase().includes(q));
+    }
+
+    if (filterDifficulty !== "All") {
+      result = result.filter((p) => p.difficulty === filterDifficulty);
+    }
+
+    return result;
+  }, [problems, bookmarks, searchQuery, filterDifficulty, revisions, submissions]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto text-left animate-pulse">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-border pb-4 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+        </div>
+        <div className="flex flex-col gap-3 py-4 border-b border-border">
+          <div className="flex gap-3">
+            <Skeleton className="h-9 flex-1" />
+            <Skeleton className="h-9 w-32" />
+          </div>
+        </div>
+        <div className="border border-border bg-card rounded-xl overflow-hidden h-96">
+          <Skeleton className="h-full w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto text-left">
+      <div>
+        <Typography variant="h1" className="font-semibold text-foreground">
+          🔖 Bookmarked Challenges
+        </Typography>
+        <Typography variant="muted">
+          Access and manage your curated coding problems checklist.
+        </Typography>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-col md:flex-row gap-3 py-4 border-b border-border bg-background/95 backdrop-blur-md sticky top-14 z-20">
+        <div className="flex-1">
+          <SearchInput
+            placeholder="Search bookmarks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Select
+            options={[
+              { value: "All", label: "Difficulty: All" },
+              { value: "Easy", label: "Easy" },
+              { value: "Medium", label: "Medium" },
+              { value: "Hard", label: "Hard" },
+            ]}
+            value={filterDifficulty}
+            onChange={(e) => setFilterDifficulty(e.target.value)}
+            className="w-36"
+          />
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearchQuery("");
+              setFilterDifficulty("All");
+            }}
+            className="text-xs shrink-0 cursor-pointer"
+          >
+            Clear Filters
+          </Button>
+        </div>
+      </div>
+
+      {/* Bookmarked List table with locked heights and sticky header */}
+      {processedProblems.length === 0 ? (
+        <div className="border border-border bg-card rounded-xl p-12 text-center text-muted-foreground shadow-sm">
+          <div className="max-w-md mx-auto space-y-3">
+            <Bookmark className="size-12 text-muted-foreground/40 mx-auto animate-bounce" />
+            <p className="text-sm font-semibold">No bookmarked problems found</p>
+            <p className="text-xs">
+              Go to the <Link to="/problems" className="text-primary hover:underline font-semibold">Problems Directory</Link> and click the bookmark button on any problem to curate your list.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-y-auto max-h-[calc(100vh-320px)] overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-muted/95 backdrop-blur-sm text-xs font-semibold text-muted-foreground select-none">
+                  <th className="px-4 py-3 text-center w-16 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Status</th>
+                  <th className="px-4 py-3 w-20 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">ID</th>
+                  <th className="px-4 py-3 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Problem</th>
+                  <th className="px-4 py-3 text-center w-24 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Practice</th>
+                  <th className="px-4 py-3 w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Difficulty</th>
+                  <th className="px-4 py-3 w-36 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Next Revision</th>
+                  <th className="px-4 py-3 text-center w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border text-sm">
+                {processedProblems.map((prob) => {
+                  const stat = getProblemStatus(prob.id);
+                  const noteKey = `usr-2_${prob.id}`;
+                  const hasNote = notes[noteKey] && notes[noteKey].trim().length > 0;
+                  const rev = revisions.find((r) => r.problemId === prob.id);
+                  let reviewDateStr = "-";
+                  if (rev) {
+                    if (rev.status === "completed") {
+                      reviewDateStr = "Done";
+                    } else {
+                      const d = new Date(rev.nextReviewDate);
+                      reviewDateStr = d.getTime() <= Date.now() ? "Due Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    }
+                  }
+
+                  const difficultyColors: Record<string, string> = {
+                    Easy: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20",
+                    Medium: "text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/20",
+                    Hard: "text-rose-600 bg-rose-500/10 dark:text-rose-400 dark:bg-rose-500/20",
+                  };
+
+                  return (
+                    <tr key={prob.id} className="hover:bg-muted/10 transition-colors">
+                      <td className="px-4 py-3.5 text-center">
+                        <button
+                          onClick={() => handleOpenStatusModal(prob.id)}
+                          className="p-1 rounded hover:bg-muted transition-all cursor-pointer inline-flex items-center justify-center"
+                          title={`Click to adjust status (Current: ${stat.text})`}
+                        >
+                          {stat.icon}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs">
+                        {prob.id}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <Link
+                          to={`/problems/${prob.id}`}
+                          className="font-semibold text-foreground hover:text-primary-hover hover:underline transition-colors"
+                        >
+                          {prob.title}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <button
+                          onClick={() => {
+                            const slug = prob.title.toLowerCase().replace(/ /g, "-");
+                            window.open(`https://leetcode.com/problems/${slug}/`, "_blank");
+                            addToast(`Opening LeetCode for "${prob.title}"...`, "info");
+                          }}
+                          className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all cursor-pointer inline-flex items-center justify-center shadow-sm text-amber-500"
+                        >
+                          <svg className="size-4 fill-current" viewBox="0 0 24 24">
+                            <path d="M13.483 0a1.374 1.374 0 0 0-.961.414l-9.055 9.063a1.503 1.503 0 0 0-.012 2.117l5.67 5.684a1.38 1.38 0 0 0 1.96 0L20.21 8.167a1.38 1.38 0 0 0 0-1.96l-5.677-5.69a1.37 1.37 0 0 0-.962-.417zM5.53 12.636a1.38 1.38 0 0 0 0 1.96l5.67 5.679a1.38 1.38 0 0 0 1.96 0l5.127-5.137a1.5 1.5 0 0 0-2.112-2.13l-4.01 4.02-3.606-3.606 2.116-2.126a1.5 1.5 0 0 0-2.112-2.13l-3.033 3.04z" />
+                          </svg>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className={cn("text-xs font-semibold rounded-full px-2 py-0.5 border", difficultyColors[prob.difficulty])}>
+                          {prob.difficulty}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs font-medium">
+                        <span className={cn(
+                          "font-medium",
+                          reviewDateStr === "Due Today" ? "text-amber-500 font-semibold animate-pulse" : "text-muted-foreground"
+                        )}>
+                          {reviewDateStr}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-center gap-2">
+                          {/* Unbookmark */}
+                          <button
+                            onClick={() => handleBookmarkToggle(prob.id)}
+                            className="p-1.5 rounded text-amber-500 hover:bg-muted cursor-pointer"
+                            title="Remove Bookmark"
+                          >
+                            <Bookmark className="size-4 fill-amber-500 text-amber-500" />
+                          </button>
+
+                          {/* Notes */}
+                          <button
+                            onClick={() => handleOpenNoteModal(prob.id)}
+                            className={cn(
+                              "p-1.5 rounded cursor-pointer transition-colors",
+                              hasNote 
+                                ? "text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400 animate-pulse" 
+                                : "text-muted-foreground hover:bg-muted"
+                            )}
+                            title="Edit Notes"
+                          >
+                            <FileText className="size-4" />
+                          </button>
+
+                          <Link
+                            to={`/problems/${prob.id}`}
+                            className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer inline-flex items-center"
+                            title="View Workspace"
+                          >
+                            <Eye className="size-4" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Notes Dialog */}
+      <Dialog
+        isOpen={activeNoteProblemId !== null}
+        onClose={() => setActiveNoteProblemId(null)}
+        title="Spaced Repetition Review Notes"
+        description="Jot down hints, code snippets or logic gotchas for this bookmarked item."
+      >
+        <div className="space-y-4 text-left">
+          <Textarea
+            value={activeNoteText}
+            onChange={(e) => setActiveNoteText(e.target.value)}
+            className="text-xs h-36 font-mono"
+            placeholder="e.g. Remember to use two pointers, or verify boundary check when index < 0..."
+          />
+          <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
+            <Button variant="outline" size="sm" onClick={() => setActiveNoteProblemId(null)} className="text-xs cursor-pointer">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveNote}
+              disabled={savingNote}
+              size="sm"
+              className="text-xs cursor-pointer"
+            >
+              {savingNote ? "Saving..." : "Save Notes"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Adjust Status Dialog */}
+      <Dialog
+        isOpen={activeStatusProblemId !== null}
+        onClose={() => setActiveStatusProblemId(null)}
+        title="Adjust Progress Status"
+        description="Select the corresponding study tracking status for this problem."
+      >
+        <div className="grid grid-cols-2 gap-2 pt-2 text-left">
+          {["Not Started", "Attempted", "Solved", "Needs Revision", "Revised Once", "Mastered"].map((statusOption) => (
+            <button
+              key={statusOption}
+              onClick={() => handleStatusChange(statusOption)}
+              className="px-3 py-2 rounded-lg border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-all cursor-pointer text-left"
+            >
+              {statusOption}
+            </button>
+          ))}
+        </div>
+      </Dialog>
+    </div>
+  );
+}

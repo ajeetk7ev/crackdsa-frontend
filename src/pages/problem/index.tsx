@@ -6,7 +6,7 @@ import { Typography } from "@/components/ui/typography";
 import { SearchInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { TableSkeleton } from "@/components/ui/loader";
+import { Skeleton } from "@/components/ui/loader";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -396,9 +396,70 @@ export function ProblemsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-10 w-48 bg-muted/60 rounded animate-pulse" />
-        <TableSkeleton rows={6} cols={5} />
+      <div className="space-y-6 max-w-7xl mx-auto text-left">
+        {/* Header Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-border pb-4 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64 animate-pulse" />
+            <Skeleton className="h-4 w-96 animate-pulse" />
+          </div>
+          <div className="flex gap-4 p-4 bg-card border border-border rounded-xl shadow-sm shrink-0">
+            <div className="space-y-2 w-16 text-center">
+              <Skeleton className="h-6 w-10 mx-auto animate-pulse" />
+              <Skeleton className="h-3 w-12 mx-auto animate-pulse" />
+            </div>
+            <div className="w-[1px] h-8 bg-border" />
+            <div className="space-y-2 w-16 text-center">
+              <Skeleton className="h-6 w-10 mx-auto animate-pulse" />
+              <Skeleton className="h-3 w-12 mx-auto animate-pulse" />
+            </div>
+            <div className="w-[1px] h-8 bg-border" />
+            <div className="space-y-2 w-16 text-center">
+              <Skeleton className="h-6 w-10 mx-auto animate-pulse" />
+              <Skeleton className="h-3.5 w-14 mx-auto rounded-full animate-pulse" />
+            </div>
+          </div>
+        </div>
+
+        {/* Filter bar Skeleton */}
+        <div className="flex flex-col gap-3 py-4 border-b border-border">
+          <div className="flex flex-col md:flex-row gap-3">
+            <Skeleton className="h-9 flex-1 animate-pulse" />
+            <Skeleton className="h-9 w-28 animate-pulse" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <Skeleton className="h-9 w-full animate-pulse" />
+            <Skeleton className="h-9 w-full animate-pulse" />
+            <Skeleton className="h-9 w-full animate-pulse" />
+            <Skeleton className="h-9 w-full animate-pulse" />
+          </div>
+        </div>
+
+        {/* Table Skeleton matching the actual columns */}
+        <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-muted/40 p-4 border-b border-border flex justify-between gap-4">
+            <Skeleton className="h-4 w-12 animate-pulse" />
+            <Skeleton className="h-4 w-16 animate-pulse" />
+            <Skeleton className="h-4 w-1/3 animate-pulse" />
+            <Skeleton className="h-4 w-16 animate-pulse" />
+            <Skeleton className="h-4 w-20 animate-pulse" />
+            <Skeleton className="h-4 w-24 animate-pulse" />
+            <Skeleton className="h-4 w-20 animate-pulse" />
+          </div>
+          <div className="divide-y divide-border p-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="py-4 flex justify-between items-center gap-4">
+                <Skeleton className="h-5 w-6 rounded-full animate-pulse" />
+                <Skeleton className="h-4 w-12 animate-pulse" />
+                <Skeleton className="h-4 w-1/3 animate-pulse" />
+                <Skeleton className="h-6 w-10 rounded-lg animate-pulse" />
+                <Skeleton className="h-5 w-16 rounded-full animate-pulse" />
+                <Skeleton className="h-4 w-20 animate-pulse" />
+                <Skeleton className="h-8 w-20 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -507,17 +568,17 @@ export function ProblemsPage() {
 
       {/* 3. Problems Table Block */}
       <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden text-left">
-        <div className="overflow-x-auto">
+        <div className="overflow-y-auto max-h-[calc(100vh-320px)] overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground select-none">
-                <th className="px-4 py-3 text-center w-16">Status</th>
-                <th className="px-4 py-3 w-20">ID</th>
-                <th className="px-4 py-3">Problem</th>
-                <th className="px-4 py-3 text-center w-24">Practice</th>
-                <th className="px-4 py-3 w-28">Difficulty</th>
-                <th className="px-4 py-3 w-36">Next Revision</th>
-                <th className="px-4 py-3 text-center w-28">Actions</th>
+              <tr className="border-b border-border text-xs font-semibold text-muted-foreground select-none">
+                <th className="px-4 py-3 text-center w-16 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Status</th>
+                <th className="px-4 py-3 w-20 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">ID</th>
+                <th className="px-4 py-3 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Problem</th>
+                <th className="px-4 py-3 text-center w-24 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Practice</th>
+                <th className="px-4 py-3 w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Difficulty</th>
+                <th className="px-4 py-3 w-36 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Next Revision</th>
+                <th className="px-4 py-3 text-center w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-sm">
