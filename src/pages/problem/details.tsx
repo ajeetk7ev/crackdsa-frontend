@@ -6,7 +6,8 @@ import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PageLoader } from "@/components/ui/loader";
-import { Select } from "@/components/ui/select";
+import { StatusChangeModal } from "@/components/common/StatusChangeModal";
+import { PomodoroPromptModal } from "@/components/common/PomodoroPromptModal";
 
 import {
   ArrowLeft,
@@ -15,6 +16,7 @@ import {
   Clock,
   Bookmark,
   CheckCircle2,
+  AlertCircle,
   Calendar,
   FileText,
   TrendingUp,
@@ -55,6 +57,10 @@ export function ProblemDetailsPage() {
   const [timeTaken, setTimeTaken] = useState("38 min");
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [customReviewDate, setCustomReviewDate] = useState("");
+
+  // Modals state
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -224,114 +230,6 @@ export function ProblemDetailsPage() {
     }
   };
 
-  // Change Status Handler
-  const handleStatusUpdate = async (newStatus: string) => {
-    setSyncing(true);
-    try {
-      let revs = JSON.parse(localStorage.getItem("mock_revisions") || "[]");
-      let subs = JSON.parse(localStorage.getItem("mock_submissions") || "[]");
-      const todayStr = new Date().toISOString();
-
-      if (newStatus === "Not Started") {
-        revs = revs.filter((r: any) => r.problemId !== id);
-        subs = subs.filter((s: any) => s.problemId !== id);
-      } 
-      else if (newStatus === "Attempted") {
-        revs = revs.filter((r: any) => r.problemId !== id);
-        subs = subs.filter((s: any) => s.problemId !== id);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId: id,
-          status: "Wrong Answer",
-          date: todayStr,
-        });
-      } 
-      else if (newStatus === "Solved") {
-        subs = subs.filter((s: any) => s.problemId !== id);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId: id,
-          status: "Correct",
-          date: todayStr,
-        });
-        if (!revs.some((r: any) => r.problemId === id)) {
-          revs.push({
-            id: `rev-${Math.random()}`,
-            userId: "usr-2",
-            problemId: id,
-            nextReviewDate: todayStr,
-            interval: 1,
-            easeFactor: 2.5,
-            repetitions: 1,
-            status: "todo",
-          });
-        }
-      } 
-      else if (newStatus === "Revised Once") {
-        subs = subs.filter((s: any) => s.problemId !== id);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId: id,
-          status: "Correct",
-          date: todayStr,
-        });
-        revs = revs.filter((r: any) => r.problemId !== id);
-        revs.push({
-          id: `rev-${Math.random()}`,
-          userId: "usr-2",
-          problemId: id,
-          nextReviewDate: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(),
-          interval: 3,
-          easeFactor: 2.5,
-          repetitions: 2,
-          status: "todo",
-        });
-      } 
-      else if (newStatus === "Mastered") {
-        subs = subs.filter((s: any) => s.problemId !== id);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId: id,
-          status: "Correct",
-          date: todayStr,
-        });
-        revs = revs.filter((r: any) => r.problemId !== id);
-        revs.push({
-          id: `rev-${Math.random()}`,
-          userId: "usr-2",
-          problemId: id,
-          nextReviewDate: new Date(Date.now() + 15 * 24 * 3600 * 1000).toISOString(),
-          interval: 15,
-          easeFactor: 2.7,
-          repetitions: 4,
-          status: "todo",
-        });
-      }
-
-      localStorage.setItem("mock_revisions", JSON.stringify(revs));
-      localStorage.setItem("mock_submissions", JSON.stringify(subs));
-
-      if (["Solved", "Revised Once", "Mastered"].includes(newStatus)) {
-        const streaks = JSON.parse(localStorage.getItem("mock_streaks") || "[]");
-        const dStr = todayStr.split("T")[0];
-        if (!streaks.includes(dStr)) {
-          streaks.push(dStr);
-          localStorage.setItem("mock_streaks", JSON.stringify(streaks));
-        }
-      }
-
-      addToast(`Problem status updated to "${newStatus}"`, "success");
-      loadProblemDetails();
-    } catch {
-      addToast("Failed to update status.", "error");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   // Status Resolver Helper
   const getProblemStatusLabel = () => {
@@ -386,14 +284,7 @@ export function ProblemDetailsPage() {
 
   const revisionCount = getRevisionCount();
 
-  // Redirect Out to Leetcode
-  const handleRedirectToLeetcode = () => {
-    if (!problem) return;
-    const slug = problem.title.toLowerCase().replace(/ /g, "-");
-    const leetcodeUrl = `https://leetcode.com/problems/${slug}/`;
-    window.open(leetcodeUrl, "_blank");
-    addToast(`Navigating to LeetCode for "${problem.title}"...`, "info");
-  };
+
 
   // Dynamic layout colors
   const difficultyColors: Record<string, string> = {
@@ -445,9 +336,9 @@ export function ProblemDetailsPage() {
         </div>
 
         <Button
-          onClick={handleRedirectToLeetcode}
+          onClick={() => setIsPomodoroOpen(true)}
           variant="default"
-          className="h-10 px-5 cursor-pointer shadow-sm flex items-center gap-2"
+          className="h-10 px-5 cursor-pointer shadow-sm flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
         >
           Practice on LeetCode
           <ExternalLink className="size-4" />
@@ -568,24 +459,13 @@ export function ProblemDetailsPage() {
                 </span>
               </div>
 
-              {/* Quick Changer selector */}
-              <div className="space-y-1.5 text-left">
-                <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">
-                  Update Tracker State:
-                </label>
-                <Select
-                  options={[
-                    { value: "Not Started", label: "⚪ Not Started" },
-                    { value: "Attempted", label: "🟡 Attempted" },
-                    { value: "Solved", label: "🟢 Solved" },
-                    { value: "Revised Once", label: "🔵 Revised Once" },
-                    { value: "Mastered", label: "🟣 Mastered" },
-                  ]}
-                  value={statusLabel === "Needs Revision" ? "Revised Once" : statusLabel}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleStatusUpdate(e.target.value)}
-                  disabled={syncing}
-                />
-              </div>
+              {/* Log Attempt & Adjust button */}
+              <Button
+                onClick={() => setIsStatusOpen(true)}
+                className="w-full text-xs font-semibold h-9 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+              >
+                Log Attempt & Adjust Status
+              </Button>
             </div>
           </div>
 
@@ -676,14 +556,18 @@ export function ProblemDetailsPage() {
             <div className="space-y-8 relative">
               {submissions.map((sub, idx) => {
                 const subDate = new Date(sub.date);
-                const isLeft = idx % 2 === 0; // alternate placement
+                const isLeft = idx % 2 === 0;
+                const isCorrect = sub.status === "Correct";
 
                 return (
                   <div key={sub.id || idx} className="relative flex flex-col md:flex-row md:items-center">
                     
                     {/* Center point node indicator */}
-                    <div className="absolute left-4 -translate-x-1/2 md:left-1/2 md:-translate-x-1/2 size-4.5 rounded-full border bg-background border-indigo-500 z-10 flex items-center justify-center shadow-sm">
-                      <div className="size-2 rounded-full bg-indigo-500" />
+                    <div className={cn(
+                      "absolute left-4 -translate-x-1/2 md:left-1/2 md:-translate-x-1/2 size-4.5 rounded-full border bg-background z-10 flex items-center justify-center shadow-sm",
+                      isCorrect ? "border-emerald-500" : "border-amber-500"
+                    )}>
+                      <div className={cn("size-2 rounded-full", isCorrect ? "bg-emerald-500" : "bg-amber-500")} />
                     </div>
 
                     {/* Timeline card items */}
@@ -692,13 +576,19 @@ export function ProblemDetailsPage() {
                       isLeft ? "md:pr-10 md:text-right" : "md:pl-10 md:left-1/2"
                     )}>
                       <div className={cn(
-                        "p-4 rounded-xl border border-border bg-background/50 inline-block text-left shadow-sm max-w-sm",
+                        "p-4 rounded-xl border border-border bg-background/50 inline-block text-left shadow-sm max-w-sm w-full",
                         isLeft ? "md:text-left" : ""
                       )}>
                         <div className="flex items-center gap-2 mb-1.5">
-                          <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                          <span className="text-xs font-bold text-foreground">Correct Solve Registered</span>
-                          <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
+                          {isCorrect ? (
+                            <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                          ) : (
+                            <AlertCircle className="size-4 text-amber-500 shrink-0" />
+                          )}
+                          <span className="text-xs font-bold text-foreground">
+                            {isCorrect ? "Attempt Succeeded" : "Practice Attempt Logged"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded ml-auto">
                             #{submissions.length - idx}
                           </span>
                         </div>
@@ -708,8 +598,24 @@ export function ProblemDetailsPage() {
                           {subDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
                         </p>
 
-                        <div className="text-[11px] text-muted-foreground leading-relaxed italic border-l-2 border-border pl-2 bg-muted/20 py-1.5 px-2 rounded-r">
-                          Spaced Repetition interval verified locally. Memory decay counters updated.
+                        {/* Custom recorded session metrics */}
+                        {sub.takeaway ? (
+                          <div className="text-[11px] text-foreground leading-relaxed font-sans bg-muted/20 border-l-2 border-indigo-500 pl-2 py-1 px-1.5 rounded mt-2">
+                            {sub.takeaway}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-muted-foreground leading-relaxed italic border-l-2 border-border pl-2 bg-muted/20 py-1.5 px-2 rounded-r">
+                            Spaced Repetition interval verified locally. Memory decay counters updated.
+                          </div>
+                        )}
+
+                        <div className="flex gap-2.5 mt-2.5 text-[9px] text-muted-foreground font-semibold">
+                          {sub.timeSpentMinutes !== undefined && sub.timeSpentMinutes !== 0 && (
+                            <span className="bg-muted/80 px-2 py-0.5 rounded">⏱️ {sub.timeSpentMinutes} mins</span>
+                          )}
+                          {sub.confidence && (
+                            <span className="bg-muted/80 px-2 py-0.5 rounded">🎯 Confidence: {sub.confidence}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -722,6 +628,27 @@ export function ProblemDetailsPage() {
           </div>
         )}
       </div>
+
+      {/* Centralized Status Log Modal */}
+      <StatusChangeModal
+        isOpen={isStatusOpen}
+        onClose={() => setIsStatusOpen(false)}
+        problemId={problem?.id || null}
+        problemTitle={problem?.title || null}
+        onStatusUpdated={() => {
+          loadProblemDetails(); // reload detail data
+        }}
+      />
+
+      {/* Pomodoro Prompt Modal */}
+      <PomodoroPromptModal
+        isOpen={isPomodoroOpen}
+        onClose={() => setIsPomodoroOpen(false)}
+        problemId={problem?.id || null}
+        problemTitle={problem?.title || null}
+        difficulty={problem?.difficulty || ""}
+        leetcodeUrl={problem ? `https://leetcode.com/problems/${problem.title.toLowerCase().replace(/ /g, "-")}/` : ""}
+      />
 
     </div>
   );
