@@ -32,7 +32,8 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
   // Profile States Binds
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [leetcodeUser, setLeetcodeUser] = useState("");
@@ -42,6 +43,11 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // Preferences States Binds
+  const [editorTheme, setEditorTheme] = useState("one-dark");
+  const [defaultLang, setDefaultLang] = useState("cpp");
+  const [reviewStrategy, setReviewStrategy] = useState("sm2");
+
   // Notifications States Binds
   const [dailyStreak, setDailyStreak] = useState(true);
   const [revisionReminder, setRevisionReminder] = useState(true);
@@ -50,18 +56,40 @@ export function SettingsPage() {
 
   // Modal Dialog states
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Load Settings database Binds
   useEffect(() => {
+    const savedFirstName = localStorage.getItem("profile_first_name");
+    const savedLastName = localStorage.getItem("profile_last_name");
     const savedName = localStorage.getItem("profile_name") || authUser?.name || "Alex Miller";
     const savedUser = localStorage.getItem("profile_username") || "alex_miller";
     const savedBio = localStorage.getItem("profile_bio") || "SDE Prep | Targeting Mid-Level placement boards";
     const savedLC = localStorage.getItem("profile_leetcode_username") || "alex_leetcode";
 
-    setFullName(savedName);
+    let initialFirst = "";
+    let initialLast = "";
+
+    if (savedFirstName !== null && savedLastName !== null) {
+      initialFirst = savedFirstName;
+      initialLast = savedLastName;
+    } else {
+      const parts = savedName.trim().split(/\s+/);
+      initialFirst = parts[0] || "";
+      initialLast = parts.slice(1).join(" ") || "";
+    }
+
+    setFirstName(initialFirst);
+    setLastName(initialLast);
     setUsername(savedUser);
     setBio(savedBio);
     setLeetcodeUser(savedLC);
+
+    // Load custom preferences from local storage
+    setEditorTheme(localStorage.getItem("pref_editor_theme") || "one-dark");
+    setDefaultLang(localStorage.getItem("pref_default_lang") || "cpp");
+    setReviewStrategy(localStorage.getItem("pref_review_strategy") || "sm2");
 
     // Notifications Binds
     const notifyStr = localStorage.getItem("crackdsa_settings_notifications");
@@ -76,12 +104,15 @@ export function SettingsPage() {
 
   // 1. Update Profile Settings
   const handleSaveProfile = async () => {
-    if (!fullName.trim() || !username.trim()) {
-      addToast("Full Name and Username cannot be empty.", "warning");
+    if (!firstName.trim() || !lastName.trim() || !username.trim()) {
+      addToast("First Name, Last Name, and Username cannot be empty.", "warning");
       return;
     }
 
     try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      localStorage.setItem("profile_first_name", firstName.trim());
+      localStorage.setItem("profile_last_name", lastName.trim());
       localStorage.setItem("profile_name", fullName);
       localStorage.setItem("profile_username", username);
       localStorage.setItem("profile_bio", bio);
@@ -117,15 +148,39 @@ export function SettingsPage() {
     setConfirmPassword("");
   };
 
-  // 3. Save Preferences Notifications
+  // 3. Save Custom Preferences Theme & Code settings
+  const handleSavePreferences = () => {
+    localStorage.setItem("pref_editor_theme", editorTheme);
+    localStorage.setItem("pref_default_lang", defaultLang);
+    localStorage.setItem("pref_review_strategy", reviewStrategy);
+    addToast("Preferences saved successfully.", "success");
+  };
+
+  // 4. Save Notifications preferences
   const handleSaveNotifications = () => {
     const payload = { dailyStreak, revisionReminder, weeklyReport, monthlyReport };
     localStorage.setItem("crackdsa_settings_notifications", JSON.stringify(payload));
     addToast("Notification preferences updated.", "success");
   };
 
-  // 4. Delete Account simulated trigger
+  // 5. Reset All Progress (keeping login details)
+  const handleResetProgress = () => {
+    setIsResetOpen(false);
+    localStorage.removeItem("mock_submissions");
+    localStorage.removeItem("mock_revisions");
+    localStorage.removeItem("mock_streaks");
+    localStorage.removeItem("mock_notes");
+    localStorage.removeItem("today_goal_problems");
+    addToast("All workspace solve progress logs reset successfully.", "success");
+    window.location.reload();
+  };
+
+  // 6. Delete Account permanently
   const handleDeleteAccount = () => {
+    if (deleteConfirmText !== "delete my account") {
+      addToast("Please type the confirmation phrase exactly.", "warning");
+      return;
+    }
     setIsDeleteOpen(false);
     addToast("Account deleted successfully. We hope to see you back!", "info");
     
@@ -137,12 +192,14 @@ export function SettingsPage() {
     localStorage.removeItem("mock_collections");
     localStorage.removeItem("mock_streaks");
     localStorage.removeItem("mock_notes");
+    localStorage.removeItem("today_goal_problems");
+    localStorage.removeItem("profile_first_name");
+    localStorage.removeItem("profile_last_name");
     localStorage.removeItem("profile_name");
     localStorage.removeItem("profile_username");
     localStorage.removeItem("profile_bio");
     localStorage.removeItem("profile_leetcode_username");
     
-    // Trigger logout redirection
     logout();
   };
 
@@ -208,7 +265,7 @@ export function SettingsPage() {
               {/* Avatar simulated view */}
               <div className="flex items-center gap-4 py-2 border-b border-border/40 pb-4">
                 <div className="size-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-2xl uppercase select-none">
-                  {fullName?.[0] || "A"}
+                  {firstName?.[0] || "A"}
                 </div>
                 <div className="space-y-1">
                   <Button variant="outline" size="xs" onClick={() => addToast("Profile picture uploads connected in Phase 10.", "info")} className="text-[10px] h-7 cursor-pointer shadow-sm">
@@ -219,32 +276,44 @@ export function SettingsPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    Full Name:
+                    First Name <span className="text-rose-500">*</span>:
                   </label>
                   <input
                     type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
                   />
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    Username:
+                    Last Name <span className="text-rose-500">*</span>:
                   </label>
                   <input
                     type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 text-left">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Username <span className="text-rose-500">*</span>:
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
+                />
+              </div>
+
+              <div className="space-y-1 text-left">
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                   LeetCode Username:
                 </label>
@@ -252,11 +321,11 @@ export function SettingsPage() {
                   type="text"
                   value={leetcodeUser}
                   onChange={(e) => setLeetcodeUser(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 text-left">
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                   Short Biography:
                 </label>
@@ -268,7 +337,7 @@ export function SettingsPage() {
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 text-left">
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                   Joined Date:
                 </label>
@@ -299,42 +368,42 @@ export function SettingsPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    Current Password:
+                    Current Password <span className="text-rose-500">*</span>:
                   </label>
                   <input
                     type="password"
                     placeholder="Enter current password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
                   />
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    New Password:
+                    New Password <span className="text-rose-500">*</span>:
                   </label>
                   <input
                     type="password"
                     placeholder="At least 6 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
                   />
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    Confirm New Password:
+                    Confirm New Password <span className="text-rose-500">*</span>:
                   </label>
                   <input
                     type="password"
                     placeholder="Repeat new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
                   />
                 </div>
 
@@ -349,44 +418,109 @@ export function SettingsPage() {
 
           {/* C. PREFERENCES TAB CONFIGURATIONS */}
           {activeTab === "preferences" && (
-            <div className="space-y-6 max-w-xl">
+            <div className="space-y-6 max-w-xl text-left">
               <div>
                 <Typography variant="title" className="text-foreground">
-                  🎨 Theme Customization
+                  🎨 App Preferences & Style Customizations
                 </Typography>
-                <p className="text-xs text-muted-foreground mt-0.5">Switch default dark mode styling configurations.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Customize default coding languages, editor themes, and appearance.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => setTheme("light")}
-                  className={cn(
-                    "p-5 rounded-xl border flex flex-col items-center justify-center gap-3 transition-all cursor-pointer shadow-sm",
-                    theme === "light"
-                      ? "border-primary bg-primary/5 text-primary"
-                      : "border-border bg-background hover:bg-muted/40"
-                  )}
-                >
-                  <div className="size-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-zinc-800 text-sm">
-                    ☀️
-                  </div>
-                  <span className="text-xs font-semibold">Light Mode</span>
-                </button>
+              {/* Theme customizer */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Theme Appearance:
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setTheme("light")}
+                    className={cn(
+                      "p-4 rounded-xl border flex flex-col items-center justify-center gap-3 transition-all cursor-pointer shadow-sm",
+                      theme === "light"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border bg-background hover:bg-muted/40"
+                    )}
+                  >
+                    <div className="size-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-zinc-800 text-sm">
+                      ☀️
+                    </div>
+                    <span className="text-xs font-semibold">Light Mode</span>
+                  </button>
 
-                <button
-                  onClick={() => setTheme("dark")}
-                  className={cn(
-                    "p-5 rounded-xl border flex flex-col items-center justify-center gap-3 transition-all cursor-pointer shadow-sm",
-                    theme === "dark"
-                      ? "border-primary bg-primary/5 text-primary"
-                      : "border-border bg-background hover:bg-muted/40"
-                  )}
-                >
-                  <div className="size-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-100 text-sm">
-                    🌙
+                  <button
+                    onClick={() => setTheme("dark")}
+                    className={cn(
+                      "p-4 rounded-xl border flex flex-col items-center justify-center gap-3 transition-all cursor-pointer shadow-sm",
+                      theme === "dark"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border bg-background hover:bg-muted/40"
+                    )}
+                  >
+                    <div className="size-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-100 text-sm">
+                      🌙
+                    </div>
+                    <span className="text-xs font-semibold">Dark Mode</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Code settings */}
+              <div className="space-y-4 pt-2 border-t border-border/40">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      Preferred Language:
+                    </label>
+                    <select
+                      value={defaultLang}
+                      onChange={(e) => setDefaultLang(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none text-foreground outline-none"
+                    >
+                      <option value="cpp">C++ (GCC 17)</option>
+                      <option value="java">Java (JDK 17)</option>
+                      <option value="python">Python (3.10)</option>
+                      <option value="javascript">JavaScript (ES6)</option>
+                      <option value="go">Go (1.20)</option>
+                    </select>
                   </div>
-                  <span className="text-xs font-semibold">Dark Mode</span>
-                </button>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      Editor Theme:
+                    </label>
+                    <select
+                      value={editorTheme}
+                      onChange={(e) => setEditorTheme(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none text-foreground outline-none"
+                    >
+                      <option value="one-dark">One Dark Pro</option>
+                      <option value="vs-dark">VS Code Dark</option>
+                      <option value="monokai">Monokai Retro</option>
+                      <option value="github-light">Github Light Contrast</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    SRS Revision Strategy:
+                  </label>
+                  <select
+                    value={reviewStrategy}
+                    onChange={(e) => setReviewStrategy(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none text-foreground outline-none"
+                  >
+                    <option value="sm2">Standard SM-2 (Algorithm Spaced Repetition)</option>
+                    <option value="balanced">Balanced Curation (Streaks + Active Recalls)</option>
+                    <option value="cram">Short-Term Cramming (Rapid revision iterations)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button onClick={handleSavePreferences} className="text-xs px-5 shadow-sm cursor-pointer">
+                  Save App Preferences
+                </Button>
               </div>
             </div>
           )}
@@ -441,27 +575,63 @@ export function SettingsPage() {
 
           {/* E. DANGER ZONE TAB */}
           {activeTab === "danger" && (
-            <div className="space-y-6 max-w-xl">
-              <div className="p-4 rounded-xl border border-destructive bg-destructive/5 space-y-4">
+            <div className="space-y-6 max-w-xl text-left">
+              <div>
+                <Typography variant="title" className="text-destructive font-semibold">
+                  ⚠️ Workspace Danger Zone
+                </Typography>
+                <p className="text-xs text-muted-foreground mt-0.5">Destructive actions relating to study data and profile credentials.</p>
+              </div>
+
+              {/* Action 1: Reset workspace progress */}
+              <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-4">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="size-5 text-destructive shrink-0" />
+                  <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <Typography variant="title" className="text-destructive font-semibold">
-                      Danger Zone: Delete Account
-                    </Typography>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Deletes all persistent statistics, streaks, database correct submissions, custom study collections, and recall timelines. Once deleted, data recovery is impossible.
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                      Reset Solve Logs & Revision Spacings
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      This will reset all coding solves records, spaced repetitions SM2 queue intervals, consistency heatmaps, and target goals. Your account login credentials and profile metadata will be kept.
                     </p>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-destructive/20">
+                <div className="pt-2 border-t border-amber-500/10">
                   <Button
-                    onClick={() => setIsDeleteOpen(true)}
+                    onClick={() => setIsResetOpen(true)}
                     variant="outline"
-                    className="h-9 text-xs text-destructive hover:bg-destructive hover:text-white border-destructive cursor-pointer"
+                    className="h-8 text-[11px] text-amber-600 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
                   >
-                    Delete Account Permanently
+                    Reset Progress Only
+                  </Button>
+                </div>
+              </div>
+
+              {/* Action 2: Purge Account permanently */}
+              <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <Trash2 className="size-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-destructive">
+                      Delete Account Permanently
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Completely purge your profile, username records, biography logs, and all dsa progress tables. This action is irreversible.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-destructive/10">
+                  <Button
+                    onClick={() => {
+                      setDeleteConfirmText("");
+                      setIsDeleteOpen(true);
+                    }}
+                    variant="default"
+                    className="h-8 text-[11px] bg-destructive hover:bg-destructive-hover text-white cursor-pointer shadow-sm"
+                  >
+                    Delete Profile & Purge Data
                   </Button>
                 </div>
               </div>
@@ -472,17 +642,52 @@ export function SettingsPage() {
 
       </div>
 
-      {/* CONFIRM DELETE MODAL */}
+      {/* RESET CONFIRMATION MODAL */}
+      <Dialog
+        isOpen={isResetOpen}
+        onClose={() => setIsResetOpen(false)}
+        title="Confirm Spaced Revision Reset"
+        description="Are you sure you want to clear your solve statistics?"
+      >
+        <div className="space-y-4 text-left">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            All database correct solve logs, SM-2 next recall schedules, streaks history, and today's goals lists will be wiped out. You will start with a fresh blank canvas dashboard.
+          </p>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
+            <Button variant="outline" size="sm" onClick={() => setIsResetOpen(false)} className="text-xs cursor-pointer">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleResetProgress}
+              size="sm"
+              className="text-xs bg-amber-600 text-white hover:bg-amber-700 cursor-pointer shadow-sm"
+            >
+              Reset Solve Logs
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* CONFIRM DELETE ACCOUNT MODAL */}
       <Dialog
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
-        title="Confirm Permanent Account Deletion"
-        description="Are you absolutely certain? This operation completely purges your DSA preparation databases."
+        title="Delete CrackDSA Profile Permanently"
+        description="Are you absolutely sure? This operation purges all your credentials and databases."
       >
         <div className="space-y-4 text-left">
-          <p className="text-xs text-muted-foreground">
-            Your streaks progress, SRS schedules, connected LeetCode profile ratios, and Curated playlists will be deleted from the database files.
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Type <span className="font-semibold text-foreground select-none">"delete my account"</span> in the confirmation input field below to verify:
           </p>
+
+          <input
+            type="text"
+            placeholder="Type 'delete my account'"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-destructive focus:border-destructive text-foreground"
+          />
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
             <Button variant="outline" size="sm" onClick={() => setIsDeleteOpen(false)} className="text-xs cursor-pointer">
@@ -491,9 +696,10 @@ export function SettingsPage() {
             <Button
               onClick={handleDeleteAccount}
               size="sm"
-              className="text-xs bg-destructive text-white hover:bg-destructive-hover cursor-pointer"
+              disabled={deleteConfirmText !== "delete my account"}
+              className="text-xs bg-destructive text-white hover:bg-destructive-hover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm font-semibold"
             >
-              Purge Database & Exit
+              Confirm Account Deletion
             </Button>
           </div>
         </div>
