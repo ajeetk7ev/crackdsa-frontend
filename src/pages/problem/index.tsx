@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/loader";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 
 import {
   Bookmark,
@@ -651,12 +652,14 @@ export function ProblemsPage() {
                             window.open(`https://leetcode.com/problems/${slug}/`, "_blank");
                             addToast(`Opening LeetCode for "${prob.title}"...`, "info");
                           }}
-                          className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all cursor-pointer inline-flex items-center justify-center shadow-sm text-amber-500"
+                          className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all cursor-pointer inline-flex items-center justify-center shadow-sm"
                           title="Solve on LeetCode"
                         >
-                          <svg className="size-4 fill-current" viewBox="0 0 24 24">
-                            <path d="M13.483 0a1.374 1.374 0 0 0-.961.414l-9.055 9.063a1.503 1.503 0 0 0-.012 2.117l5.67 5.684a1.38 1.38 0 0 0 1.96 0L20.21 8.167a1.38 1.38 0 0 0 0-1.96l-5.677-5.69a1.37 1.37 0 0 0-.962-.417zM5.53 12.636a1.38 1.38 0 0 0 0 1.96l5.67 5.679a1.38 1.38 0 0 0 1.96 0l5.127-5.137a1.5 1.5 0 0 0-2.112-2.13l-4.01 4.02-3.606-3.606 2.116-2.126a1.5 1.5 0 0 0-2.112-2.13l-3.033 3.04z" />
-                          </svg>
+                          <img
+                            src={leetcodeLogo}
+                            alt="LeetCode"
+                            className="size-6  object-contain"
+                          />
                         </button>
                       </td>
                       <td className="px-4 py-3.5">

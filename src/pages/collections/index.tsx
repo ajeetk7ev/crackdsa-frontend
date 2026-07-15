@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 
 import {
   Library,
@@ -16,7 +17,6 @@ import {
   Bookmark,
   FileText,
   Eye,
-  ExternalLink,
   Circle,
   AlertCircle,
   CheckCircle2,
@@ -581,17 +581,17 @@ export function CollectionsPage() {
 
           {/* Playlist Problems Table */}
           <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-y-auto max-h-[calc(100vh-320px)] overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground select-none">
-                    <th className="px-4 py-3 text-center w-12">S</th>
-                    <th className="px-4 py-3 w-16">ID</th>
-                    <th className="px-4 py-3">Problem Title</th>
-                    <th className="px-4 py-3 w-28">Difficulty</th>
-                    <th className="px-4 py-3 w-32">Topic</th>
-                    <th className="px-4 py-3 w-36">Next Revision</th>
-                    <th className="px-4 py-3 text-center w-28">Actions</th>
+                  <tr className="border-b border-border text-xs font-semibold text-muted-foreground select-none">
+                    <th className="px-4 py-3 text-center w-16 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Status</th>
+                    <th className="px-4 py-3 w-20 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">ID</th>
+                    <th className="px-4 py-3 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Problem</th>
+                    <th className="px-4 py-3 text-center w-24 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Practice</th>
+                    <th className="px-4 py-3 w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Difficulty</th>
+                    <th className="px-4 py-3 w-36 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Next Revision</th>
+                    <th className="px-4 py-3 text-center w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-sm">
@@ -645,26 +645,37 @@ export function CollectionsPage() {
                           <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs">
                             {prob.id}
                           </td>
-                          <td className="px-4 py-3.5">
-                            <a
-                              href={`https://leetcode.com/problems/${prob.title.toLowerCase().replace(/ /g, "-")}/`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-semibold text-foreground hover:underline inline-flex items-center gap-1"
+                          <td className="px-4 py-3.5 text-left">
+                            <Link
+                              to={`/problems/${prob.id}`}
+                              className="font-semibold text-foreground hover:text-primary-hover hover:underline transition-colors"
                             >
                               {prob.title}
-                              <ExternalLink className="size-3 text-muted-foreground inline" />
-                            </a>
+                            </Link>
                           </td>
-                          <td className="px-4 py-3.5">
-                            <span className={cn("text-xs font-semibold rounded-full px-2 py-0.5", difficultyColors[prob.difficulty])}>
+                          <td className="px-4 py-3.5 text-center">
+                            <button
+                              onClick={() => {
+                                const slug = prob.title.toLowerCase().replace(/ /g, "-");
+                                window.open(`https://leetcode.com/problems/${slug}/`, "_blank");
+                                addToast(`Opening LeetCode for "${prob.title}"...`, "info");
+                              }}
+                              className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all cursor-pointer inline-flex items-center justify-center shadow-sm"
+                              title="Solve on LeetCode"
+                            >
+                              <img
+                                src={leetcodeLogo}
+                                alt="LeetCode"
+                                className="size-6 object-contain"
+                              />
+                            </button>
+                          </td>
+                          <td className="px-4 py-3.5 text-left">
+                            <span className={cn("text-xs font-semibold rounded-full px-2 py-0.5 border", difficultyColors[prob.difficulty])}>
                               {prob.difficulty}
                             </span>
                           </td>
-                          <td className="px-4 py-3.5 text-xs text-text-secondary font-medium">
-                            {prob.topic}
-                          </td>
-                          <td className="px-4 py-3.5 text-xs">
+                          <td className="px-4 py-3.5 text-xs text-left">
                             <span className={cn(
                               "font-medium",
                               reviewDateStr === "Due Today" ? "text-amber-500 font-semibold animate-pulse" : "text-muted-foreground"
