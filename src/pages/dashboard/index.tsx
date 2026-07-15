@@ -5,7 +5,7 @@ import { Typography } from "@/components/ui/typography";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Spinner, TableSkeleton } from "@/components/ui/loader";
+import { Spinner } from "@/components/ui/loader";
 
 import { WelcomeHeader } from "./components/WelcomeHeader";
 import { Pomodoro } from "./components/Pomodoro";
@@ -159,9 +159,40 @@ export function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-10 w-48 rounded bg-muted/60" />
-        <TableSkeleton rows={4} cols={3} />
+      <div className="space-y-8 max-w-7xl mx-auto animate-pulse">
+        {/* Welcome Header Skeleton */}
+        <div className="p-6 rounded-xl border border-border bg-card space-y-4">
+          <div className="h-7 w-1/3 rounded bg-muted/60" />
+          <div className="h-4 w-2/3 rounded bg-muted/40" />
+        </div>
+
+        {/* Today's Action Plan Cards Skeleton */}
+        <div className="space-y-3">
+          <div className="h-5 w-40 rounded bg-muted/60" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-6 rounded-xl border border-border bg-card h-48 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="h-4 w-1/2 rounded bg-muted/60" />
+                  <div className="h-3 w-3/4 rounded bg-muted/40" />
+                </div>
+                <div className="h-8 w-full rounded bg-muted/50" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Consistency Analytics Skeleton */}
+        <div className="space-y-3">
+          <div className="h-5 w-48 rounded bg-muted/60" />
+          <div className="p-6 rounded-xl border border-border bg-card h-64 space-y-4 flex flex-col justify-between">
+            <div className="flex gap-4">
+              <div className="h-12 w-24 rounded bg-muted/60" />
+              <div className="h-12 w-24 rounded bg-muted/60" />
+            </div>
+            <div className="h-28 w-full rounded bg-muted/40" />
+          </div>
+        </div>
       </div>
     );
   }

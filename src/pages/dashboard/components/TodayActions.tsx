@@ -263,7 +263,6 @@ export function TodayGoalCard({ problems, submissions }: { problems: ProblemItem
 
   const solvedCount = goalIds.filter(isProblemSolved).length;
   const totalCount = goalIds.length;
-  const progressPercent = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
 
   return (
     <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left relative">
@@ -275,7 +274,7 @@ export function TodayGoalCard({ problems, submissions }: { problems: ProblemItem
           3. Today's Goal
         </Typography>
         <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-2 py-0.5 rounded-full uppercase">
-          Daily Targets
+          {goalIds.length > 0 ? `${solvedCount} / ${totalCount} Solved` : "Daily Targets"}
         </span>
       </div>
 
@@ -298,63 +297,61 @@ export function TodayGoalCard({ problems, submissions }: { problems: ProblemItem
           </div>
         ) : (
           /* State B: Goals Checklist */
-          <div className="space-y-3 mt-1">
-            
-            {/* Progress indicators */}
-            <div className="flex justify-between items-center text-[11px] font-medium text-muted-foreground">
-              <span>{solvedCount} / {totalCount} completed</span>
-              <span>{progressPercent}%</span>
-            </div>
-            
-            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="bg-rose-500 h-full transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+          <div className="space-y-2 mt-1">
+            {/* Checklist of first 4 items styled same as Today's Revision */}
+            {goalIds.slice(0, 4).map((id) => {
+              const prob = getProblemDetails(id);
+              if (!prob) return null;
+              const solved = isProblemSolved(id);
+              const diff = (prob.difficulty || "Easy") as "Easy" | "Medium" | "Hard";
+              
+              const difficultyColors = {
+                Easy: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
+                Medium: "text-amber-600 bg-amber-500/10 border-amber-500/20",
+                Hard: "text-rose-600 bg-rose-500/10 border-rose-500/20",
+              };
 
-            {/* Checklist of first 4 items */}
-            <div className="space-y-1.5 pt-1">
-              {goalIds.slice(0, 4).map((id) => {
-                const prob = getProblemDetails(id);
-                if (!prob) return null;
-                const solved = isProblemSolved(id);
-                
-                return (
-                  <div 
-                    key={id}
-                    className="flex items-center justify-between p-2 rounded-lg border border-border/50 bg-background/50 text-xs hover:border-border/80 transition-all"
-                  >
-                    <button
-                      onClick={() => handleRedirectToLeetcode(prob.title)}
-                      className={cn(
-                        "truncate font-semibold text-left flex items-center gap-1.5 cursor-pointer hover:underline text-foreground",
-                        solved ? "line-through text-muted-foreground font-normal" : ""
-                      )}
-                      title="Click to solve on LeetCode"
-                    >
-                      <span className="text-[10px] shrink-0 text-muted-foreground font-mono">[{prob.topic}]</span>
-                      <span className="truncate">{prob.title}</span>
-                      <ExternalLink className="size-2.5 text-muted-foreground inline" />
-                    </button>
+              return (
+                <div 
+                  key={id}
+                  onClick={() => handleRedirectToLeetcode(prob.title)}
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-background border border-border hover:border-border-hover hover:bg-muted/30 transition-all cursor-pointer group"
+                  title="Solve on LeetCode"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className={cn(
+                      "text-xs font-semibold text-foreground truncate group-hover:text-primary-hover transition-colors",
+                      solved ? "line-through text-muted-foreground font-normal" : ""
+                    )}>
+                      {prob.title}
+                    </p>
+                  </div>
 
+                  <div className="flex items-center gap-1.5 ml-2 shrink-0">
                     <span className={cn(
-                      "text-[9px] font-bold px-1.5 py-0.2 rounded shrink-0",
-                      solved ? "text-emerald-500 bg-emerald-500/10" : "text-muted-foreground bg-muted"
+                      "text-[9px] font-semibold border rounded-full px-2 py-0.5",
+                      difficultyColors[diff]
+                    )}>
+                      {diff}
+                    </span>
+                    <span className={cn(
+                      "text-[9px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wide",
+                      solved 
+                        ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" 
+                        : "text-muted-foreground bg-muted border-border"
                     )}>
                       {solved ? "Done" : "Pending"}
                     </span>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
 
-              {goalIds.length > 4 && (
-                <p className="text-[10px] text-muted-foreground text-center pt-0.5 font-medium">
-                  + {goalIds.length - 4} more goal problems
-                </p>
-              )}
-            </div>
-
+            {goalIds.length > 4 && (
+              <p className="text-[10px] text-muted-foreground text-center pt-1 font-medium">
+                + {goalIds.length - 4} more goal problems
+              </p>
+            )}
           </div>
         )}
       </div>
