@@ -9,9 +9,8 @@ import { Spinner, TableSkeleton } from "@/components/ui/loader";
 
 import { WelcomeHeader } from "./components/WelcomeHeader";
 import { Pomodoro } from "./components/Pomodoro";
-import { TodayRevisionCard, ContinueLearningCard, TodayGoalCard } from "./components/TodayActions";
+import { TodayRevisionCard, LeetcodeProfileCard, TodayGoalCard } from "./components/TodayActions";
 import { LearningProgress } from "./components/LearningProgress";
-import { Insights } from "./components/Insights";
 
 import { ExternalLink } from "lucide-react";
 
@@ -38,7 +37,6 @@ export function DashboardPage() {
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [streaks, setStreaks] = useState<string[]>([]);
-  const [notes, setNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   // Review Modal State
@@ -57,13 +55,11 @@ export function DashboardPage() {
       // Load database variables from localStorage for dashboard components
       const rawSub = localStorage.getItem("mock_submissions") || "[]";
       const rawStreaks = localStorage.getItem("mock_streaks") || "[]";
-      const rawNotes = localStorage.getItem("mock_notes") || "{}";
 
       setProblems(probRes.data);
       setRevisions(revRes.data);
       setSubmissions(JSON.parse(rawSub));
       setStreaks(JSON.parse(rawStreaks));
-      setNotes(JSON.parse(rawNotes));
     } catch (err) {
       addToast("Failed to fetch dashboard updates from database.", "error");
     } finally {
@@ -156,15 +152,7 @@ export function DashboardPage() {
     addToast(`Launching LeetCode for "${prob.title}"...`, "info");
   };
 
-  // Solve count today calculation
-  const getSolvedCountToday = () => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    return submissions.filter(
-      (s) => s.status === "Correct" && s.date.startsWith(todayStr)
-    ).length;
-  };
 
-  const solvedToday = getSolvedCountToday();
 
   // Selected problem representation
   const activeProblem = problems.find((p) => p.id === selectedProblemId);
@@ -204,8 +192,8 @@ export function DashboardPage() {
             problems={problems}
             onReviewSelect={handleReviewSelect}
           />
-          <ContinueLearningCard problems={problems} />
-          <TodayGoalCard solvedToday={solvedToday} target={2} />
+          <LeetcodeProfileCard />
+          <TodayGoalCard problems={problems} submissions={submissions} />
           <Pomodoro />
         </div>
       </div>
@@ -222,18 +210,7 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* SECTION 4: INSIGHTS (Below Fold) */}
-      <div className="space-y-3">
-        <Typography variant="h3" className="font-semibold text-foreground border-l-2 border-primary pl-2 text-left">
-          Study Log Insights
-        </Typography>
-        <Insights
-          submissions={submissions}
-          revisions={revisions}
-          problems={problems}
-          notes={notes}
-        />
-      </div>
+
 
       {/* Spaced Repetition Practice dialog overlay */}
       <Dialog
