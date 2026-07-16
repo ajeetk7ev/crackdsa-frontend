@@ -1,5 +1,5 @@
 import { api } from "./axios";
-import { type AxiosResponse } from "axios";
+import { getAdapter, type AxiosResponse } from "axios";
 
 // ==========================================
 // 1. Initial Mock Database Seeds
@@ -250,125 +250,20 @@ api.defaults.adapter = async (config) => {
   const delay = Math.floor(Math.random() * 200) + 250;
   await new Promise((resolve) => setTimeout(resolve, delay));
 
+  // Auth routes are handled by the real backend - pass them through the Vite proxy
+  if (cleanUrl.startsWith("/auth")) {
+    const xhrAdapter = getAdapter("xhr");
+    return xhrAdapter(config);
+  }
+
   let responseData: any = null;
   let responseStatus = 200;
 
   try {
     // ------------------------------------------
-    // Auth Routes
-    // ------------------------------------------
-    if (cleanUrl === "/auth/login" && method === "post") {
-      const { email, password } = requestBody;
-      const users = getDB("mock_users");
-      const found = users.find((u: any) => u.email === email && u.password === password);
-
-      if (found) {
-        responseData = {
-          token: found.id, // simplified token
-          user: { id: found.id, name: found.name, email: found.email, role: found.role },
-        };
-      } else {
-        responseStatus = 400;
-        responseData = { message: "Invalid email or password" };
-      }
-    }
-
-    else if (cleanUrl === "/auth/register" && method === "post") {
-      const { email, password, name } = requestBody;
-      const users = getDB("mock_users");
-      const exists = users.some((u: any) => u.email === email);
-
-      if (exists) {
-        responseStatus = 400;
-        responseData = { message: "Email already exists" };
-      } else {
-        const newUser = {
-          id: `usr-${Math.random().toString(36).substring(2, 9)}`,
-          email,
-          password,
-          name,
-          role: "student",
-        };
-        users.push(newUser);
-        setDB("mock_users", users);
-        
-        responseData = {
-          token: newUser.id,
-          user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role },
-        };
-      }
-    }
-
-    else if (cleanUrl === "/auth/check" && method === "get") {
-      const user = getAuthUser();
-      if (user) {
-        responseData = { user: { id: user.id, name: user.name, email: user.email, role: user.role } };
-      } else {
-        responseStatus = 401;
-        responseData = { message: "Unauthorized token" };
-      }
-    }
-
-    else if (cleanUrl === "/auth/forgot-password" && method === "post") {
-      responseData = { message: "Recovery email dispatched successfully" };
-    }
-
-    else if (cleanUrl === "/auth/reset-password" && method === "post") {
-      responseData = { message: "Password updated successfully" };
-    }
-
-    else if (cleanUrl === "/auth/google" && method === "post") {
-      const users = getDB("mock_users");
-      let found = users.find((u: any) => u.email === "google.user@developer.com");
-      if (!found) {
-        found = {
-          id: "usr-google",
-          email: "google.user@developer.com",
-          password: "OAuthPassword123",
-          name: "Google Developer",
-          role: "student",
-        };
-        users.push(found);
-        setDB("mock_users", users);
-        
-        // Seed initial revision cards for this google user so they see due items in dashboard
-        const revisions = getDB("mock_revisions");
-        const hasSeeds = revisions.some((r: any) => r.userId === "usr-google");
-        if (!hasSeeds) {
-          revisions.push({
-            id: "rev-g1",
-            userId: "usr-google",
-            problemId: "146", // LRU Cache
-            nextReviewDate: new Date().toISOString(), // due now
-            interval: 1,
-            easeFactor: 2.5,
-            repetitions: 1,
-            status: "todo",
-          });
-          revisions.push({
-            id: "rev-g2",
-            userId: "usr-google",
-            problemId: "023", // Merge k Sorted
-            nextReviewDate: new Date(Date.now() - 3600000).toISOString(), // due
-            interval: 2,
-            easeFactor: 2.4,
-            repetitions: 1,
-            status: "todo",
-          });
-          setDB("mock_revisions", revisions);
-        }
-      }
-      responseData = {
-        token: found.id,
-        user: { id: found.id, name: found.name, email: found.email, role: found.role },
-      };
-    }
-
-
-    // ------------------------------------------
     // Problem Directory CRUD
     // ------------------------------------------
-    else if (cleanUrl === "/problems" && method === "get") {
+    if (cleanUrl === "/problems" && method === "get") {
       responseData = getDB("mock_problems");
     }
 

@@ -5,64 +5,51 @@ import { Typography } from "@/components/ui/typography";
 import { Input, PasswordInput } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useNotificationStore } from "@/stores/notification.store";
-import { api } from "@/lib/axios";
 import { UserPlus, Check } from "lucide-react";
 
 export function RegisterPage() {
-  const [name, setName] = useState("");
+  const [firstname, setFirstname] = useState("");
+  const [lastname, setLastname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [agree, setAgree] = useState(false);
-  const [error, setError] = useState("");
-  const { register, isLoading } = useAuthStore();
-  const checkAuth = useAuthStore((state: any) => state.checkAuth);
-  const addToast = useNotificationStore((state: any) => state.addToast);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [globalError, setGlobalError] = useState("");
+
+  const { signup, isLoading } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-
-    if (!name || !email || !password) {
-      setError("Please fill in all onboarding fields.");
-      return;
-    }
+    setFieldErrors({});
+    setGlobalError("");
 
     if (!agree) {
-      setError("You must agree to the Terms of Service.");
+      setGlobalError("You must agree to the Terms of Service to continue.");
       return;
     }
 
-    const success = await register(email, password, name);
-    if (success) {
+    const result = await signup(firstname, lastname, email, password, rememberMe);
+
+    if (result.success) {
       navigate("/dashboard");
+      return;
+    }
+
+    if (result.fieldErrors) {
+      setFieldErrors(result.fieldErrors);
     }
   };
 
-  const handleGoogleSignup = async () => {
-    setError("");
-    addToast("Connecting with Google Secure OAuth...", "info");
-    try {
-      const response = await api.post("/auth/google");
-      const { token, user } = response.data;
-      
-      localStorage.setItem("crackdsa-token", token);
-      localStorage.setItem("crackdsa-user", JSON.stringify(user));
-      
-      // Sync store state
-      await checkAuth();
-      addToast(`Account linked via Google! Welcome, ${user.name}. Ready to master DSA.`, "success");
-      navigate("/dashboard");
-    } catch (err: any) {
-      setError("Google authentication failed. Please try again.");
-      addToast("Failed to register with Google.", "error");
-    }
+  // Google OAuth: redirect the browser to the backend OAuth entry point
+  const handleGoogleSignup = () => {
+    window.location.href = "/api/v1/auth/google";
   };
 
   return (
     <div className="w-full space-y-6">
-      
+
       {/* Title */}
       <div className="space-y-2">
         <Typography variant="h1" className="font-bold tracking-tight text-foreground text-left text-2xl md:text-3xl">
@@ -102,19 +89,42 @@ export function RegisterPage() {
 
       {/* Registration Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1 text-left">
-          <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-            Full Name
-          </Typography>
-          <Input
-            placeholder="Alex Miller"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={isLoading}
-            required
-            className="rounded-lg h-9 border border-border/80 focus:border-foreground"
-          />
+
+        {/* First Name + Last Name */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1 text-left">
+            <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+              First Name
+            </Typography>
+            <Input
+              placeholder="Alex"
+              type="text"
+              value={firstname}
+              onChange={(e) => setFirstname(e.target.value)}
+              disabled={isLoading}
+              className="rounded-lg h-9 border border-border/80 focus:border-foreground"
+            />
+            {fieldErrors.firstname && (
+              <p className="text-[11px] text-destructive font-medium">{fieldErrors.firstname}</p>
+            )}
+          </div>
+
+          <div className="space-y-1 text-left">
+            <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+              Last Name
+            </Typography>
+            <Input
+              placeholder="Miller"
+              type="text"
+              value={lastname}
+              onChange={(e) => setLastname(e.target.value)}
+              disabled={isLoading}
+              className="rounded-lg h-9 border border-border/80 focus:border-foreground"
+            />
+            {fieldErrors.lastname && (
+              <p className="text-[11px] text-destructive font-medium">{fieldErrors.lastname}</p>
+            )}
+          </div>
         </div>
 
         <div className="space-y-1 text-left">
@@ -127,9 +137,11 @@ export function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
-            required
             className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
+          {fieldErrors.email && (
+            <p className="text-[11px] text-destructive font-medium">{fieldErrors.email}</p>
+          )}
         </div>
 
         <div className="space-y-1 text-left">
@@ -137,22 +149,29 @@ export function RegisterPage() {
             Password
           </Typography>
           <PasswordInput
-            placeholder="••••••••"
+            placeholder="At least 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}
-            required
             className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
+          {fieldErrors.password && (
+            <p className="text-[11px] text-destructive font-medium">{fieldErrors.password}</p>
+          )}
         </div>
 
-        {error && (
+        {globalError && (
           <p className="text-xs text-destructive font-semibold animate-in fade-in slide-in-from-top-1 text-left">
-            {error}
+            {globalError}
           </p>
         )}
 
-        <div className="flex items-center pt-1 text-left">
+        <div className="space-y-2 pt-1">
+          <Checkbox
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            label="Keep me logged in for 30 days"
+          />
           <Checkbox
             checked={agree}
             onChange={(e) => setAgree(e.target.checked)}

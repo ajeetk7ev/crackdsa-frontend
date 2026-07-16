@@ -1,107 +1,178 @@
 import { create } from "zustand";
-import { api } from "@/lib/axios";
+import { api, setAccessToken } from "@/lib/axios";
 import { useNotificationStore } from "./notification.store";
 
+// Matches the shape returned by the backend's toJSON transform
 export interface User {
-  id: string;
-  name: string;
+  _id: string;
+  firstname: string;
+  lastname: string;
+  username: string;
   email: string;
-  role: "admin" | "student";
+  avatar: string;
+  provider: "local" | "google";
+  isEmailVerified: boolean;
+  role: "USER" | "ADMIN";
+  isProfilePublic: boolean;
+  isActive: boolean;
+  preferences: {
+    theme: "light" | "dark" | "system";
+    revisionStrategy: "sm2" | "balanced" | "cram";
+    revisionSchedule: number[];
+    pomodoro: {
+      focusTime: number;
+      breakTime: number;
+      longBreakTime: number;
+    };
+  };
+  notifications: {
+    revisionReminder: boolean;
+    streakReminder: boolean;
+    weeklyReport: boolean;
+    monthlyReport: boolean;
+  };
+  streak: {
+    current: number;
+    longest: number;
+    lastSolvedDate: string | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface FieldErrors {
+  [field: string]: string;
 }
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
+
+  signup: (
+    firstname: string,
+    lastname: string,
+    email: string,
+    password: string,
+    rememberMe: boolean
+  ) => Promise<{ success: boolean; fieldErrors?: FieldErrors }>;
+
+  login: (
+    email: string,
+    password: string,
+    rememberMe: boolean
+  ) => Promise<{ success: boolean; fieldErrors?: FieldErrors }>;
+
+  logout: () => Promise<void>;
+
   checkAuth: () => Promise<void>;
-  updateProfile: (name: string) => Promise<void>;
+
+  setUser: (user: User) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem("crackdsa-token"),
   isAuthenticated: false,
   isLoading: true,
 
-  login: async (email, password) => {
+  // ---------- Signup ----------
+  signup: async (firstname, lastname, email, password, rememberMe) => {
     set({ isLoading: true });
     const notification = useNotificationStore.getState();
+
     try {
-      const response = await api.post("/auth/login", { email, password });
-      const { token, user } = response.data;
-      
-      localStorage.setItem("crackdsa-token", token);
-      localStorage.setItem("crackdsa-user", JSON.stringify(user));
-      
-      set({ token, user, isAuthenticated: true, isLoading: false });
-      notification.success(`Welcome back, ${user.name}!`);
-      return true;
+      const response = await api.post("/auth/signup", {
+        firstname,
+        lastname,
+        email,
+        password,
+        rememberMe,
+      });
+
+      const { user, accessToken } = response.data.data;
+      setAccessToken(accessToken);
+      set({ user, isAuthenticated: true, isLoading: false });
+      notification.success(`Welcome to CrackDSA, ${user.firstname}!`);
+      return { success: true };
     } catch (err: any) {
       set({ isLoading: false });
-      notification.error(err?.response?.data?.message || "Login failed. Please verify credentials.");
-      return false;
+      const data = err?.response?.data;
+
+      // Validation field errors (422)
+      if (err?.response?.status === 422 && data?.errors) {
+        return { success: false, fieldErrors: data.errors };
+      }
+
+      notification.error(data?.message || "Registration failed. Please try again.");
+      return { success: false };
     }
   },
 
-  register: async (email, password, name) => {
+  // ---------- Login ----------
+  login: async (email, password, rememberMe) => {
     set({ isLoading: true });
     const notification = useNotificationStore.getState();
+
     try {
-      const response = await api.post("/auth/register", { email, password, name });
-      const { token, user } = response.data;
-      
-      localStorage.setItem("crackdsa-token", token);
-      localStorage.setItem("crackdsa-user", JSON.stringify(user));
-      
-      set({ token, user, isAuthenticated: true, isLoading: false });
-      notification.success("Account registered successfully! Ready to solve.");
-      return true;
+      const response = await api.post("/auth/login", { email, password, rememberMe });
+
+      const { user, accessToken } = response.data.data;
+      setAccessToken(accessToken);
+      set({ user, isAuthenticated: true, isLoading: false });
+      notification.success(`Welcome back, ${user.firstname}!`);
+      return { success: true };
     } catch (err: any) {
       set({ isLoading: false });
-      notification.error(err?.response?.data?.message || "Registration failed. Try again.");
-      return false;
+      const data = err?.response?.data;
+
+      if (err?.response?.status === 422 && data?.errors) {
+        return { success: false, fieldErrors: data.errors };
+      }
+
+      notification.error(data?.message || "Login failed. Please check your credentials.");
+      return { success: false };
     }
   },
 
-  logout: () => {
-    localStorage.removeItem("crackdsa-token");
-    localStorage.removeItem("crackdsa-user");
-    set({ token: null, user: null, isAuthenticated: false, isLoading: false });
-    useNotificationStore.getState().info("Logged out successfully.");
+  // ---------- Logout ----------
+  logout: async () => {
+    const notification = useNotificationStore.getState();
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Proceed with local cleanup even if the server call fails
+    } finally {
+      setAccessToken(null);
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      notification.info("Logged out successfully.");
+    }
   },
 
+  // ---------- Check Auth (called on app mount / layout load) ----------
+  // Attempts a silent token refresh using the cookie, then fetches the current user.
   checkAuth: async () => {
-    const token = localStorage.getItem("crackdsa-token");
-    if (!token) {
-      set({ token: null, user: null, isAuthenticated: false, isLoading: false });
-      return;
-    }
+    set({ isLoading: true });
 
     try {
-      const response = await api.get("/auth/check");
-      const { user } = response.data;
+      // Try to get a fresh access token using the refresh token cookie
+      const refreshResponse = await api.post("/auth/refresh");
+      const newToken: string = refreshResponse.data?.data?.accessToken;
+      setAccessToken(newToken);
+
+      // Fetch the full user profile
+      const meResponse = await api.get("/auth/me");
+      const user: User = meResponse.data.data.user;
+
       set({ user, isAuthenticated: true, isLoading: false });
     } catch {
-      localStorage.removeItem("crackdsa-token");
-      localStorage.removeItem("crackdsa-user");
-      set({ token: null, user: null, isAuthenticated: false, isLoading: false });
+      // No valid session - user needs to log in
+      setAccessToken(null);
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
 
-  updateProfile: async (name) => {
-    const notification = useNotificationStore.getState();
-    try {
-      const response = await api.post("/settings/profile", { name });
-      const { user } = response.data;
-      localStorage.setItem("crackdsa-user", JSON.stringify(user));
-      set({ user });
-      notification.success("Profile details updated successfully.");
-    } catch (err: any) {
-      notification.error("Failed to update profile settings.");
-    }
+  // ---------- Set User (used by Google OAuth success page) ----------
+  setUser: (user) => {
+    set({ user, isAuthenticated: true, isLoading: false });
   },
 }));

@@ -24,6 +24,13 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
     return str.charAt(0).toUpperCase() + str.slice(1).replace("-", " ");
   };
 
+  const getInitials = () => {
+    if (!user) return "U";
+    const first = user.firstname?.[0] || "";
+    const last = user.lastname?.[0] || "";
+    return (first + last).toUpperCase() || "U";
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border bg-background/95 backdrop-blur-md px-6 shadow-sm">
       {/* Breadcrumb section */}
@@ -123,10 +130,19 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu((prev) => !prev)}
-            className="size-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center font-bold text-sm text-muted-foreground border border-border select-none uppercase cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none"
+            className="size-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center font-bold text-sm text-muted-foreground border border-border select-none uppercase cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none overflow-hidden"
             title="User Profile Menu"
           >
-            {user?.name?.[0] || "U"}
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user.firstname ? `${user.firstname} ${user.lastname}` : "User Profile"}
+                className="size-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              getInitials()
+            )}
           </button>
 
           {showProfileMenu && (
@@ -141,7 +157,9 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
               <div className="absolute right-0 mt-2 z-50 w-48 rounded-xl border border-border bg-card p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150 text-left">
                 {/* User Info Header */}
                 <div className="px-3 py-2 border-b border-border mb-1">
-                  <p className="text-xs font-semibold text-foreground truncate">{user?.name || "User"}</p>
+                  <p className="text-xs font-semibold text-foreground truncate">
+                    {user ? `${user.firstname} ${user.lastname}` : "User"}
+                  </p>
                   <p className="text-[10px] text-muted-foreground truncate">{user?.email || "user@example.com"}</p>
                 </div>
 

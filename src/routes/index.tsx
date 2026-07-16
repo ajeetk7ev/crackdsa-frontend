@@ -10,6 +10,7 @@ import { LoginPage } from "@/pages/auth/login";
 import { RegisterPage } from "@/pages/auth/register";
 import { ForgotPasswordPage } from "@/pages/auth/forgot-password";
 import { ResetPasswordPage } from "@/pages/auth/reset-password";
+import { GoogleSuccessPage } from "@/pages/auth/google-success";
 import { DashboardPage } from "@/pages/dashboard";
 import { ProblemsPage } from "@/pages/problem";
 import { BookmarksPage } from "@/pages/bookmarks";
@@ -39,6 +40,7 @@ export function AppRoutes() {
         <Route path="register" element={<RegisterPage />} />
         <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="reset-password" element={<ResetPasswordPage />} />
+        <Route path="google/success" element={<GoogleSuccessPage />} />
         <Route path="" element={<Navigate to="login" replace />} />
       </Route>
 

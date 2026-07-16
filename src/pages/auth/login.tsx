@@ -5,71 +5,44 @@ import { Typography } from "@/components/ui/typography";
 import { Input, PasswordInput } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useNotificationStore } from "@/stores/notification.store";
-import { api } from "@/lib/axios";
-import { LogIn, Sparkles, Lightbulb } from "lucide-react";
+import { LogIn, Lightbulb } from "lucide-react";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [globalError, setGlobalError] = useState("");
+
   const { login, isLoading } = useAuthStore();
-  const checkAuth = useAuthStore((state: any) => state.checkAuth);
-  const addToast = useNotificationStore((state: any) => state.addToast);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setFieldErrors({});
+    setGlobalError("");
 
-    if (!email || !password) {
-      setError("Please fill in all credentials fields.");
+    const result = await login(email, password, rememberMe);
+
+    if (result.success) {
+      navigate("/dashboard");
       return;
     }
 
-    const success = await login(email, password);
-    if (success) {
-      navigate("/dashboard");
+    if (result.fieldErrors) {
+      setFieldErrors(result.fieldErrors);
     }
   };
 
-  const handleQuickLogin = async (role: "student" | "admin") => {
-    const credentials = {
-      student: { e: "alex@developer.com", p: "Password123" },
-      admin: { e: "admin@crackdsa.com", p: "Password123" },
-    };
-    const { e, p } = credentials[role];
-    setEmail(e);
-    setPassword(p);
-    const success = await login(e, p);
-    if (success) {
-      navigate("/dashboard");
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setError("");
-    addToast("Connecting with Google Secure OAuth...", "info");
-    try {
-      const response = await api.post("/auth/google");
-      const { token, user } = response.data;
-      
-      localStorage.setItem("crackdsa-token", token);
-      localStorage.setItem("crackdsa-user", JSON.stringify(user));
-      
-      // Sync store state
-      await checkAuth();
-      addToast(`Logged in successfully via Google! Welcome back, ${user.name}.`, "success");
-      navigate("/dashboard");
-    } catch (err: any) {
-      setError("Google authentication failed. Please try again.");
-      addToast("Failed to authenticate with Google.", "error");
-    }
+  // Google OAuth: redirect the browser to the backend route.
+  // The backend handles the full OAuth flow and redirects back to /auth/google/success.
+  const handleGoogleLogin = () => {
+    window.location.href = "/api/v1/auth/google";
   };
 
   return (
     <div className="w-full space-y-6">
-      
+
       {/* Title */}
       <div className="space-y-2">
         <Typography variant="h1" className="font-bold tracking-tight text-foreground text-left text-2xl md:text-3xl">
@@ -119,9 +92,11 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
-            required
             className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
+          {fieldErrors.email && (
+            <p className="text-[11px] text-destructive font-medium">{fieldErrors.email}</p>
+          )}
         </div>
 
         <div className="space-y-1 text-left">
@@ -141,19 +116,25 @@ export function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}
-            required
             className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
+          {fieldErrors.password && (
+            <p className="text-[11px] text-destructive font-medium">{fieldErrors.password}</p>
+          )}
         </div>
 
-        {error && (
+        {globalError && (
           <p className="text-xs text-destructive font-semibold animate-in fade-in slide-in-from-top-1 text-left">
-            {error}
+            {globalError}
           </p>
         )}
 
         <div className="flex items-center justify-between pt-1">
-          <Checkbox label="Remember this device" />
+          <Checkbox
+            label="Remember this device for 30 days"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+          />
         </div>
 
         <Button
@@ -166,40 +147,7 @@ export function LoginPage() {
         </Button>
       </form>
 
-      {/* Guest Login buttons */}
-      <div className="relative pt-2">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border/80" />
-        </div>
-        <div className="relative flex justify-center text-[10px] uppercase font-bold text-muted-foreground tracking-wider select-none bg-background px-3">
-          Or quick demo login
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="outline"
-          size="sm"
-          type="button"
-          onClick={() => handleQuickLogin("student")}
-          disabled={isLoading}
-          className="text-[11px] font-semibold cursor-pointer border border-border/80 rounded-lg hover:bg-muted/40 text-foreground"
-        >
-          <Sparkles className="size-3 text-amber-500 mr-1 shrink-0" /> Student Demo
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          type="button"
-          onClick={() => handleQuickLogin("admin")}
-          disabled={isLoading}
-          className="text-[11px] font-semibold cursor-pointer border border-border/80 rounded-lg hover:bg-muted/40 text-foreground"
-        >
-          <Sparkles className="size-3 text-indigo-500 mr-1 shrink-0" /> Admin Demo
-        </Button>
-      </div>
-
-      {/* Tip Box Context */}
+      {/* Tip Box */}
       <div className="p-3 border border-border/60 bg-muted/20 dark:bg-muted/5 rounded-xl text-left space-y-1.5">
         <span className="text-[10px] font-bold text-indigo-500 flex items-center gap-1">
           <Lightbulb className="size-3.5" /> Interview Prep Tip
