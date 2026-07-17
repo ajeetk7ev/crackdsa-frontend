@@ -14,8 +14,6 @@ import {
   Trash2,
   Edit,
   Copy,
-  CheckCircle2,
-  XCircle,
   Database,
   Upload,
   ChevronLeft,
@@ -53,14 +51,6 @@ const AVAILABLE_TOPICS = [
   "Heap",
 ];
 
-const AVAILABLE_COMPANIES = [
-  "Amazon",
-  "Google",
-  "Meta",
-  "Microsoft",
-  "Netflix",
-  "Adobe",
-];
 
 export function AdminProblemsPage() {
   const addToast = useNotificationStore((state: any) => state.addToast);
@@ -72,7 +62,6 @@ export function AdminProblemsPage() {
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDifficulty, setFilterDifficulty] = useState("All");
-  const [filterStatus, setFilterStatus] = useState("All");
 
   // Pagination Binds
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,16 +74,11 @@ export function AdminProblemsPage() {
 
   // Editing Binds
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
+  const [formId, setFormId] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formUrl, setFormUrl] = useState("");
   const [formDifficulty, setFormDifficulty] = useState<"Easy" | "Medium" | "Hard">("Easy");
   const [formTopics, setFormTopics] = useState<string[]>([]);
-  const [formCompanies, setFormCompanies] = useState<string[]>([]);
-  const [formDesc, setFormDesc] = useState("");
-  const [formExamples, setFormExamples] = useState("");
-  const [formConstraints, setFormConstraints] = useState("");
-  const [formBoilerplate, setFormBoilerplate] = useState("");
-  const [formIsActive, setFormIsActive] = useState(true);
 
   // Delete Bind
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -104,8 +88,8 @@ export function AdminProblemsPage() {
 
   const loadAdminProblems = async () => {
     try {
-      const res = await api.get("/problems");
-      setProblems(res.data);
+      const res = await api.get("/problems?limit=1000");
+      setProblems(res.data?.data?.problems || []);
     } catch {
       addToast("Failed to fetch admin problems database.", "error");
     } finally {
@@ -116,21 +100,6 @@ export function AdminProblemsPage() {
   useEffect(() => {
     loadAdminProblems();
   }, []);
-
-  // Toggle status inline helper
-  const handleToggleStatus = async (prob: Problem) => {
-    const newStatus = prob.status === "inactive" ? "active" : "inactive";
-    try {
-      await api.put(`/problems/${prob.id}`, {
-        ...prob,
-        status: newStatus,
-      });
-      addToast(`Problem "${prob.title}" publish status updated to ${newStatus}.`, "success");
-      loadAdminProblems();
-    } catch {
-      addToast("Failed to toggle publish status.", "error");
-    }
-  };
 
   // Compute Statistics
   const stats = useMemo(() => {
@@ -151,16 +120,9 @@ export function AdminProblemsPage() {
       // Difficulty Binds
       const matchDiff = filterDifficulty === "All" || p.difficulty === filterDifficulty;
 
-      // Status Binds
-      const isActive = p.status !== "inactive";
-      const matchStatus =
-        filterStatus === "All" ||
-        (filterStatus === "active" && isActive) ||
-        (filterStatus === "inactive" && !isActive);
-
-      return matchSearch && matchDiff && matchStatus;
+      return matchSearch && matchDiff;
     });
-  }, [problems, searchQuery, filterDifficulty, filterStatus]);
+  }, [problems, searchQuery, filterDifficulty]);
 
   // Paginated List
   const totalPages = Math.ceil(filteredProblems.length / itemsPerPage) || 1;
@@ -172,7 +134,7 @@ export function AdminProblemsPage() {
   // Reset page on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterDifficulty, filterStatus]);
+  }, [searchQuery, filterDifficulty]);
 
   // Copy Link action
   const handleCopyUrl = (url?: string) => {
@@ -187,36 +149,25 @@ export function AdminProblemsPage() {
   // Open creation modal
   const handleOpenAdd = () => {
     setEditingProblem(null);
+    setFormId("");
     setFormTitle("");
     setFormUrl("");
     setFormDifficulty("Easy");
     setFormTopics([]);
-    setFormCompanies([]);
-    setFormDesc("");
-    setFormExamples("");
-    setFormConstraints("");
-    setFormBoilerplate("");
-    setFormIsActive(true);
     setIsAddEditOpen(true);
   };
 
   // Open edit modal
   const handleOpenEdit = (prob: Problem) => {
     setEditingProblem(prob);
+    setFormId(prob.id);
     setFormTitle(prob.title);
     setFormUrl(prob.leetcodeUrl || "");
     setFormDifficulty((prob.difficulty as "Easy" | "Medium" | "Hard") || "Easy");
     
     // Topics parse (comma split or array check)
-    const topicArr = prob.topic.split(",").map((t) => t.trim());
+    const topicArr = prob.topic.split(",").map((t) => t.trim()).filter(Boolean);
     setFormTopics(topicArr);
-    
-    setFormCompanies(prob.companies || []);
-    setFormDesc(prob.description || "");
-    setFormExamples(prob.examples || "");
-    setFormConstraints(prob.constraints || "");
-    setFormBoilerplate(prob.boilerplate || "");
-    setFormIsActive(prob.status !== "inactive");
     setIsAddEditOpen(true);
   };
 
@@ -229,17 +180,12 @@ export function AdminProblemsPage() {
     }
   };
 
-  // Toggle companies checkboxes
-  const handleToggleCompany = (company: string) => {
-    if (formCompanies.includes(company)) {
-      setFormCompanies(formCompanies.filter((c) => c !== company));
-    } else {
-      setFormCompanies([...formCompanies, company]);
-    }
-  };
-
   // Save / Submit problem edits
   const handleSaveProblem = async () => {
+    if (!formId.trim()) {
+      addToast("Problem ID (LeetCode ID) is required.", "warning");
+      return;
+    }
     if (!formTitle.trim()) {
       addToast("Problem Title is required.", "warning");
       return;
@@ -253,18 +199,12 @@ export function AdminProblemsPage() {
       return;
     }
 
-    const payload: Partial<Problem> = {
+    const payload = {
+      id: formId,
       title: formTitle,
       difficulty: formDifficulty,
       topic: formTopics.join(", "),
-      description: formDesc || `Given a set parameters, write an optimized algorithms loop.`,
-      examples: formExamples || "Input: nums = [1]\nOutput: 1",
-      constraints: formConstraints || "- 1 <= nums.length <= 10^5",
-      boilerplate: formBoilerplate || "public void solve() {\n    // write code...\n}",
       leetcodeUrl: formUrl,
-      companies: formCompanies,
-      status: formIsActive ? "active" : "inactive",
-      updatedAt: new Date().toISOString(),
     };
 
     try {
@@ -274,14 +214,14 @@ export function AdminProblemsPage() {
         addToast(`Problem "${formTitle}" updated successfully.`, "success");
       } else {
         // Create Action
-        payload.createdAt = new Date().toISOString();
         await api.post("/problems", payload);
         addToast(`Problem "${formTitle}" catalogued successfully.`, "success");
       }
       setIsAddEditOpen(false);
       loadAdminProblems();
-    } catch {
-      addToast("Failed to write problem parameters.", "error");
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || "Failed to write problem parameters.";
+      addToast(errMsg, "error");
     }
   };
 
@@ -320,7 +260,7 @@ export function AdminProblemsPage() {
   };
 
   // Bulk Import logic Binds
-  const handleBulkImport = () => {
+  const handleBulkImport = async () => {
     if (!csvPasteData.trim()) {
       addToast("Pastable CSV data is empty.", "warning");
       return;
@@ -328,52 +268,62 @@ export function AdminProblemsPage() {
 
     try {
       const rows = csvPasteData.split("\n");
-      const currentDB = JSON.parse(localStorage.getItem("mock_problems") || "[]");
       let addedCount = 0;
 
-      rows.forEach((row, idx) => {
-        // Skip header or empty rows
-        if (idx === 0 && row.toLowerCase().includes("title")) return;
-        if (!row.trim()) return;
-
-        const cols = row.split(",");
-        if (cols.length < 3) return;
-
-        const title = cols[0]?.trim();
-        const leetcodeUrl = cols[1]?.trim();
-        const difficulty = cols[2]?.trim() || "Medium";
-        const topics = cols[3]?.replace(/;/g, ", ")?.trim() || "Array";
-        const companies = cols[4]?.split(";")?.map((c) => c.trim())?.filter(Boolean) || [];
-
-        const nextId = String(currentDB.length + 1).padStart(3, "0");
-        const newProblem = {
-          id: nextId,
-          title,
-          leetcodeUrl,
-          difficulty,
-          topic: topics,
-          companies,
-          description: "Given parameters, code an optimized algorithms loop.",
-          examples: "Input: nums = [1]\nOutput: 1",
-          constraints: "- 1 <= nums.length <= 100",
-          boilerplate: "public void solve() {}",
-          status: "active",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          solvedCount: 0,
-        };
-
-        currentDB.push(newProblem);
-        addedCount++;
+      let maxId = 0;
+      problems.forEach((p) => {
+        const num = parseInt(p.id, 10);
+        if (!isNaN(num) && num > maxId) maxId = num;
       });
 
-      localStorage.setItem("mock_problems", JSON.stringify(currentDB));
+      for (let idx = 0; idx < rows.length; idx++) {
+        const row = rows[idx];
+        if (idx === 0 && (row.toLowerCase().includes("title") || row.toLowerCase().includes("id"))) continue;
+        if (!row.trim()) continue;
+
+        const cols = row.split(",");
+        if (cols.length < 3) continue;
+
+        let id = "";
+        let title = "";
+        let leetcodeUrl = "";
+        let difficulty = "";
+        let topics = "";
+
+        if (cols.length >= 5) {
+          id = cols[0]?.trim();
+          title = cols[1]?.trim();
+          leetcodeUrl = cols[2]?.trim();
+          difficulty = cols[3]?.trim() || "Medium";
+          topics = cols[4]?.replace(/;/g, ", ")?.trim() || "Array";
+        } else {
+          title = cols[0]?.trim();
+          leetcodeUrl = cols[1]?.trim();
+          difficulty = cols[2]?.trim() || "Medium";
+          topics = cols[3]?.replace(/;/g, ", ")?.trim() || "Array";
+          maxId++;
+          id = String(maxId).padStart(3, "0");
+        }
+
+        const payload = {
+          id,
+          title,
+          difficulty: difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase(),
+          topic: topics,
+          leetcodeUrl,
+        };
+
+        await api.post("/problems", payload);
+        addedCount++;
+      }
+
       addToast(`Bulk imported ${addedCount} problems successfully.`, "success");
       setIsImportOpen(false);
       setCsvPasteData("");
       loadAdminProblems();
-    } catch {
-      addToast("Failed to parse CSV string formats. Verify comma dividers.", "error");
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || "Failed to parse and import CSV string formats.";
+      addToast(errMsg, "error");
     }
   };
 
@@ -488,7 +438,7 @@ export function AdminProblemsPage() {
             className="flex-1 text-xs h-9"
           />
 
-          <div className="grid grid-cols-2 sm:flex gap-2 text-xs">
+          <div className="grid grid-cols-1 sm:flex gap-2 text-xs">
             <select
               value={filterDifficulty}
               onChange={(e) => setFilterDifficulty(e.target.value)}
@@ -498,16 +448,6 @@ export function AdminProblemsPage() {
               <option value="Easy">Easy</option>
               <option value="Medium">Medium</option>
               <option value="Hard">Hard</option>
-            </select>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring font-medium select-none"
-            >
-              <option value="All">All Statuses</option>
-              <option value="active">Active Only</option>
-              <option value="inactive">Inactive Only</option>
             </select>
           </div>
         </div>
@@ -519,7 +459,6 @@ export function AdminProblemsPage() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-border text-xs font-semibold text-muted-foreground select-none">
-                <th className="px-4 py-3 w-16 text-center bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Status</th>
                 <th className="px-4 py-3 bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Problem Name</th>
                 <th className="px-4 py-3 w-28 text-center bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Practice</th>
                 <th className="px-4 py-3 w-28 bg-muted/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Difficulty</th>
@@ -530,7 +469,7 @@ export function AdminProblemsPage() {
             <tbody className="divide-y divide-border text-sm">
               {paginatedProblems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={5} className="py-12 text-center text-muted-foreground">
                     <div className="max-w-md mx-auto space-y-2">
                       <Database className="size-8 text-muted-foreground/60 mx-auto" />
                       <p className="font-semibold text-foreground">No Problems Found</p>
@@ -540,24 +479,10 @@ export function AdminProblemsPage() {
                 </tr>
               ) : (
                 paginatedProblems.map((prob) => {
-                  const isActive = prob.status !== "inactive";
                   const createdDate = prob.createdAt ? new Date(prob.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Jul 12";
 
                   return (
                     <tr key={prob.id} className="hover:bg-muted/10 transition-colors">
-                      <td className="px-4 py-3.5 text-center">
-                        <button
-                          onClick={() => handleToggleStatus(prob)}
-                          className="p-1 rounded hover:bg-muted transition-all cursor-pointer inline-flex items-center justify-center"
-                          title={`Click to toggle status (Current: ${isActive ? "Active" : "Inactive"})`}
-                        >
-                          {isActive ? (
-                            <CheckCircle2 className="size-4 text-emerald-500 mx-auto" />
-                          ) : (
-                            <XCircle className="size-4 text-rose-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
                       <td className="px-4 py-3.5 text-left">
                         <span className="font-semibold text-foreground block">{prob.title}</span>
                         <span className="text-[10px] text-muted-foreground font-mono block mt-0.5">ID: {prob.id}</span>
@@ -599,6 +524,7 @@ export function AdminProblemsPage() {
                           >
                             <Copy className="size-3.5" />
                           </button>
+
 
                           <button
                             onClick={() => handleOpenEdit(prob)}
@@ -664,6 +590,20 @@ export function AdminProblemsPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Problem ID (LeetCode ID): *
+              </label>
+              <input
+                type="text"
+                value={formId}
+                onChange={(e) => setFormId(e.target.value)}
+                placeholder="e.g. 001"
+                disabled={!!editingProblem}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                 Problem Title: *
               </label>
               <input
@@ -674,7 +614,9 @@ export function AdminProblemsPage() {
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
               />
             </div>
+          </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                 LeetCode URL: *
@@ -687,21 +629,21 @@ export function AdminProblemsPage() {
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
               />
             </div>
-          </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Difficulty:
-            </label>
-            <select
-              value={formDifficulty}
-              onChange={(e: any) => setFormDifficulty(e.target.value)}
-              className="h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring font-medium select-none w-full"
-            >
-              <option value="Easy">🟢 Easy</option>
-              <option value="Medium">🟡 Medium</option>
-              <option value="Hard">🔴 Hard</option>
-            </select>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Difficulty:
+              </label>
+              <select
+                value={formDifficulty}
+                onChange={(e: any) => setFormDifficulty(e.target.value)}
+                className="h-9 px-3 rounded-lg border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring font-medium select-none w-full"
+              >
+                <option value="Easy">🟢 Easy</option>
+                <option value="Medium">🟡 Medium</option>
+                <option value="Hard">🔴 Hard</option>
+              </select>
+            </div>
           </div>
 
           {/* Topics selection multi-select */}
@@ -729,59 +671,6 @@ export function AdminProblemsPage() {
                 );
               })}
             </div>
-          </div>
-
-          {/* Companies selection multi-select */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Company Tags:
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 border border-border p-3 rounded-lg bg-background/50">
-              {AVAILABLE_COMPANIES.map((comp) => {
-                const isSelected = formCompanies.includes(comp);
-                return (
-                  <div
-                    key={comp}
-                    onClick={() => handleToggleCompany(comp)}
-                    className="flex items-center gap-2 cursor-pointer select-none text-xs text-foreground p-1 hover:bg-muted/30 rounded"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => {}} // handled by click wrapper
-                      className="size-3.5 accent-indigo-500 cursor-pointer"
-                    />
-                    <span>{comp}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Boilerplate Code (Optional):
-            </label>
-            <Textarea
-              value={formBoilerplate}
-              onChange={(e) => setFormBoilerplate(e.target.value)}
-              className="text-xs h-24 font-mono font-medium"
-              placeholder="e.g. public void solve() {}"
-            />
-          </div>
-
-          {/* Status Checkbox Binds */}
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="form_status_active"
-              checked={formIsActive}
-              onChange={(e) => setFormIsActive(e.target.checked)}
-              className="size-4 accent-indigo-500 cursor-pointer"
-            />
-            <label htmlFor="form_status_active" className="text-xs font-semibold text-foreground cursor-pointer select-none">
-              Publish Status: Active (Checked makes this problem visible to students)
-            </label>
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">

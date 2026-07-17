@@ -127,7 +127,7 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
         <div className="flex-1 overflow-y-auto py-6 px-3 space-y-6">
           {renderNavGroup("Practice", mainNav)}
           {renderNavGroup("Account", userNav)}
-          {user?.role === "admin" && renderNavGroup("Management", adminNav)}
+          {user?.role?.toLowerCase() === "admin" && renderNavGroup("Management", adminNav)}
         </div>
 
         {/* Footer Area - Logout Only */}

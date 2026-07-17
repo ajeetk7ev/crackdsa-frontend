@@ -154,7 +154,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         const msg = data?.message || "Invalid email or password.";
         return {
           success: false,
-
           error: msg,
         };
       }

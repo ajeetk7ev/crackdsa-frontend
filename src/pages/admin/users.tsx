@@ -61,7 +61,7 @@ export function AdminUsersPage() {
   const loadAdminUsers = async () => {
     try {
       const res = await api.get("/admin/users");
-      setUsers(res.data);
+      setUsers(res.data?.data || []);
     } catch {
       addToast("Failed to fetch admin users directory.", "error");
     } finally {
@@ -76,8 +76,8 @@ export function AdminUsersPage() {
   // Compute Statistics
   const stats = useMemo(() => {
     const total = users.length;
-    const admins = users.filter((u) => u.role === "admin").length;
-    const students = users.filter((u) => u.role === "student").length;
+    const admins = users.filter((u) => u.role?.toLowerCase() === "admin").length;
+    const students = users.filter((u) => u.role?.toLowerCase() === "student" || u.role?.toLowerCase() === "user").length;
     const blocked = users.filter((u) => u.status === "blocked").length;
     return { total, admins, students, blocked };
   }, [users]);
@@ -89,7 +89,7 @@ export function AdminUsersPage() {
       const matchSearch =
         u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
 
-      const matchRole = filterRole === "All" || u.role === filterRole;
+      const matchRole = filterRole === "All" || u.role?.toLowerCase() === filterRole.toLowerCase() || (filterRole === "student" && u.role?.toLowerCase() === "user");
 
       const isBlocked = u.status === "blocked";
       const matchStatus =
@@ -114,79 +114,60 @@ export function AdminUsersPage() {
   }, [searchQuery, filterRole, filterStatus]);
 
   // Change user role Binds
-  const handleToggleRole = (userId: string) => {
-    const currentDB = JSON.parse(localStorage.getItem("mock_users") || "[]");
-    const updated = currentDB.map((u: any) => {
-      if (u.id === userId) {
-        const nextRole = u.role === "admin" ? "student" : "admin";
-        addToast(`Role updated for ${u.name} to ${nextRole}.`, "success");
-        return { ...u, role: nextRole };
-      }
-      return u;
-    });
-
-    localStorage.setItem("mock_users", JSON.stringify(updated));
-    loadAdminUsers();
+  const handleToggleRole = async (userId: string) => {
+    try {
+      await api.put(`/admin/users/${userId}/role`);
+      addToast("User role toggled successfully.", "success");
+      loadAdminUsers();
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || "Failed to toggle user role.";
+      addToast(errMsg, "error");
+    }
   };
 
   // Toggle user block status Binds
-  const handleToggleBlock = (userId: string) => {
-    const currentDB = JSON.parse(localStorage.getItem("mock_users") || "[]");
-    const updated = currentDB.map((u: any) => {
-      if (u.id === userId) {
-        const isBlocked = u.status === "blocked";
-        const nextStatus = isBlocked ? "active" : "blocked";
-        addToast(
-          isBlocked 
-            ? `${u.name} has been unblocked successfully.` 
-            : `${u.name} has been blocked from SDE prep access.`, 
-          "info"
-        );
-        return { ...u, status: nextStatus };
-      }
-      return u;
-    });
-
-    localStorage.setItem("mock_users", JSON.stringify(updated));
-    loadAdminUsers();
+  const handleToggleBlock = async (userId: string) => {
+    try {
+      await api.put(`/admin/users/${userId}/status`);
+      addToast("User status updated successfully.", "info");
+      loadAdminUsers();
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || "Failed to update user status.";
+      addToast(errMsg, "error");
+    }
   };
 
   // Manual Add User Action Binds
-  const handleAddUserSubmit = () => {
+  const handleAddUserSubmit = async () => {
     if (!formName.trim() || !formEmail.trim() || !formPassword) {
       addToast("All fields are required.", "warning");
       return;
     }
 
-    const currentDB = JSON.parse(localStorage.getItem("mock_users") || "[]");
-    const exists = currentDB.some((u: any) => u.email.toLowerCase() === formEmail.toLowerCase());
+    const nameParts = formName.trim().split(/\s+/);
+    const firstname = nameParts[0] || "User";
+    const lastname = nameParts.slice(1).join(" ") || "Name";
+    const backendRole = formRole === "admin" ? "ADMIN" : "USER";
 
-    if (exists) {
-      addToast("Email is already registered.", "error");
-      return;
+    try {
+      await api.post("/admin/users", {
+        firstname,
+        lastname,
+        email: formEmail,
+        password: formPassword,
+        role: backendRole,
+      });
+      addToast(`Account created for ${formName}.`, "success");
+      setFormName("");
+      setFormEmail("");
+      setFormPassword("");
+      setFormRole("student");
+      setIsAddOpen(false);
+      loadAdminUsers();
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || "Failed to create user account.";
+      addToast(errMsg, "error");
     }
-
-    const newUser = {
-      id: `usr-${Math.random().toString(36).substring(2, 9)}`,
-      name: formName,
-      email: formEmail,
-      password: formPassword,
-      role: formRole,
-      status: "active",
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [...currentDB, newUser];
-    localStorage.setItem("mock_users", JSON.stringify(updated));
-    addToast(`Account created for ${formName}.`, "success");
-    
-    // Reset Form
-    setFormName("");
-    setFormEmail("");
-    setFormPassword("");
-    setFormRole("student");
-    setIsAddOpen(false);
-    loadAdminUsers();
   };
 
   // Open Delete modal
@@ -196,17 +177,18 @@ export function AdminUsersPage() {
   };
 
   // Confirm delete Action Binds
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteTargetId) return;
-
-    const currentDB = JSON.parse(localStorage.getItem("mock_users") || "[]");
-    const updated = currentDB.filter((u: any) => u.id !== deleteTargetId);
-    
-    localStorage.setItem("mock_users", JSON.stringify(updated));
-    addToast("User account permanently deleted.", "info");
-    setIsDeleteOpen(false);
-    setDeleteTargetId(null);
-    loadAdminUsers();
+    try {
+      await api.delete(`/admin/users/${deleteTargetId}`);
+      addToast("User account permanently deleted.", "info");
+      setIsDeleteOpen(false);
+      setDeleteTargetId(null);
+      loadAdminUsers();
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || "Failed to delete user.";
+      addToast(errMsg, "error");
+    }
   };
 
   if (loading) {
@@ -340,7 +322,7 @@ export function AdminUsersPage() {
                         {item.email}
                       </td>
                       <td className="px-4 py-3.5">
-                        {item.role === "admin" ? (
+                        {item.role?.toLowerCase() === "admin" ? (
                           <span className="text-[10px] font-bold text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-full inline-flex items-center gap-1 select-none">
                             <Shield className="size-3" /> Admin
                           </span>
