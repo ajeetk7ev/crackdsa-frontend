@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "/api/v1",
+  baseURL: import.meta.env.VITE_API_URL,
   timeout: 10000,
   withCredentials: true, // required so the browser sends the HTTP-only refresh token cookie
   headers: {
@@ -27,7 +27,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Track whether a token refresh is already in progress to prevent parallel refreshes
@@ -87,7 +87,13 @@ api.interceptors.response.use(
         processPendingQueue(refreshError, null);
 
         // Clear in-memory state and redirect to login if not already there
-        const authPaths = ["/login", "/signup", "/forgot-password", "/reset-password", "/google/success"];
+        const authPaths = [
+          "/login",
+          "/signup",
+          "/forgot-password",
+          "/reset-password",
+          "/google/success",
+        ];
         if (!authPaths.includes(window.location.pathname)) {
           window.location.href = "/login?expired=true";
         }
@@ -98,5 +104,5 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );

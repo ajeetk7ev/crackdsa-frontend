@@ -23,7 +23,7 @@ export function WelcomeHeader({ dueCount, onStartRevisions }: WelcomeHeaderProps
     <div className="flex flex-col md:flex-row md:items-center md:justify-between p-6 rounded-xl border border-border bg-card shadow-sm gap-4">
       <div className="space-y-1">
         <Typography variant="h1" className="font-semibold text-foreground flex items-center gap-2">
-          {getGreeting()}, {user?.name || "Developer"} <Sparkles className="size-5 text-amber-500 fill-amber-500/10" />
+          {getGreeting()}, {user?.firstname || "Developer"} <Sparkles className="size-5 text-amber-500 fill-amber-500/10" />
         </Typography>
         <p className="text-sm text-muted-foreground">
           {dueCount > 0

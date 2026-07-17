@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth.store";
+import { useNotificationStore } from "@/stores/notification.store";
 import { Typography } from "@/components/ui/typography";
 import { Input, PasswordInput } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,36 +16,43 @@ export function RegisterPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [agree, setAgree] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [globalError, setGlobalError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const notification = useNotificationStore();
 
-  const { signup, isLoading } = useAuthStore();
+  const { signup } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFieldErrors({});
-    setGlobalError("");
 
     if (!agree) {
-      setGlobalError("You must agree to the Terms of Service to continue.");
+      notification.error("You must agree to the Terms of Service to continue.");
       return;
     }
 
-    const result = await signup(firstname, lastname, email, password, rememberMe);
+    setIsSubmitting(true);
+    try {
+      const result = await signup(firstname, lastname, email, password, rememberMe);
 
-    if (result.success) {
-      navigate("/dashboard");
-      return;
-    }
+      if (result.success) {
+        navigate("/dashboard");
+        return;
+      }
 
-    if (result.fieldErrors) {
-      setFieldErrors(result.fieldErrors);
+      if (result.fieldErrors && Object.keys(result.fieldErrors).length > 0) {
+        setFieldErrors(result.fieldErrors);
+      } else if (result.error) {
+        notification.error(result.error);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Google OAuth: redirect the browser to the backend OAuth entry point
   const handleGoogleSignup = () => {
-    window.location.href = "/api/v1/auth/google";
+    window.location.href = import.meta.env.VITE_API_URL + "/auth/google";
   };
 
   return (
@@ -65,7 +73,7 @@ export function RegisterPage() {
         variant="outline"
         type="button"
         onClick={handleGoogleSignup}
-        disabled={isLoading}
+        disabled={isSubmitting}
         className="w-full h-10 cursor-pointer text-xs font-semibold flex items-center justify-center gap-2 border border-border bg-card hover:bg-muted/50 text-foreground transition-all shadow-sm rounded-lg"
       >
         <svg className="size-4 shrink-0" viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
@@ -101,7 +109,7 @@ export function RegisterPage() {
               type="text"
               value={firstname}
               onChange={(e) => setFirstname(e.target.value)}
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="rounded-lg h-9 border border-border/80 focus:border-foreground"
             />
             {fieldErrors.firstname && (
@@ -118,7 +126,7 @@ export function RegisterPage() {
               type="text"
               value={lastname}
               onChange={(e) => setLastname(e.target.value)}
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="rounded-lg h-9 border border-border/80 focus:border-foreground"
             />
             {fieldErrors.lastname && (
@@ -136,7 +144,7 @@ export function RegisterPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
           {fieldErrors.email && (
@@ -152,19 +160,13 @@ export function RegisterPage() {
             placeholder="At least 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
           {fieldErrors.password && (
             <p className="text-[11px] text-destructive font-medium">{fieldErrors.password}</p>
           )}
         </div>
-
-        {globalError && (
-          <p className="text-xs text-destructive font-semibold animate-in fade-in slide-in-from-top-1 text-left">
-            {globalError}
-          </p>
-        )}
 
         <div className="space-y-2 pt-1">
           <Checkbox
@@ -182,9 +184,9 @@ export function RegisterPage() {
         <Button
           type="submit"
           className="w-full h-10 cursor-pointer mt-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-lg text-sm flex items-center justify-center gap-1.5"
-          disabled={isLoading}
+          disabled={isSubmitting}
         >
-          {isLoading ? "Creating Account..." : "Create Account"}
+          {isSubmitting ? "Creating Account..." : "Create Account"}
           <UserPlus className="size-4" />
         </Button>
       </form>

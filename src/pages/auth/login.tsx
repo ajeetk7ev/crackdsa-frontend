@@ -6,38 +6,49 @@ import { Input, PasswordInput } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LogIn, Lightbulb } from "lucide-react";
+import { useNotificationStore } from "@/stores/notification.store";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [globalError, setGlobalError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const notification = useNotificationStore();
 
-  const { login, isLoading } = useAuthStore();
+  const { login } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFieldErrors({});
-    setGlobalError("");
+    setIsSubmitting(true);
 
-    const result = await login(email, password, rememberMe);
+    try {
+      const result = await login(email, password, rememberMe);
 
-    if (result.success) {
-      navigate("/dashboard");
-      return;
-    }
+     
 
-    if (result.fieldErrors) {
-      setFieldErrors(result.fieldErrors);
+      if (result.success) {
+        navigate("/dashboard");
+        return;
+      } 
+
+      if (result.fieldErrors && Object.keys(result.fieldErrors).length > 0) {       
+        setFieldErrors(result.fieldErrors);
+      } else if (result.error) {
+        notification.error(result.error);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Google OAuth: redirect the browser to the backend route.
   // The backend handles the full OAuth flow and redirects back to /auth/google/success.
   const handleGoogleLogin = () => {
-    window.location.href = "/api/v1/auth/google";
+    console.log(import.meta.env.VITE_API_URL + "/auth/google");
+    window.location.href = import.meta.env.VITE_API_URL + "/auth/google";
   };
 
   return (
@@ -58,7 +69,7 @@ export function LoginPage() {
         variant="outline"
         type="button"
         onClick={handleGoogleLogin}
-        disabled={isLoading}
+        disabled={isSubmitting}
         className="w-full h-10 cursor-pointer text-xs font-semibold flex items-center justify-center gap-2 border border-border bg-card hover:bg-muted/50 text-foreground transition-all shadow-sm rounded-lg"
       >
         <svg className="size-4 shrink-0" viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
@@ -91,7 +102,7 @@ export function LoginPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
           {fieldErrors.email && (
@@ -115,19 +126,13 @@ export function LoginPage() {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="rounded-lg h-9 border border-border/80 focus:border-foreground"
           />
           {fieldErrors.password && (
             <p className="text-[11px] text-destructive font-medium">{fieldErrors.password}</p>
           )}
         </div>
-
-        {globalError && (
-          <p className="text-xs text-destructive font-semibold animate-in fade-in slide-in-from-top-1 text-left">
-            {globalError}
-          </p>
-        )}
 
         <div className="flex items-center justify-between pt-1">
           <Checkbox
@@ -140,10 +145,10 @@ export function LoginPage() {
         <Button
           type="submit"
           className="w-full h-10 cursor-pointer mt-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-lg text-sm flex items-center justify-center gap-1.5"
-          disabled={isLoading}
+          disabled={isSubmitting}
         >
-          {isLoading ? "Signing In..." : "Sign In"}
-          <LogIn className="size-4" />
+          {isSubmitting ? "Signing In..." : "Sign In"}
+         
         </Button>
       </form>
 

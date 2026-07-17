@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useNotificationStore } from "@/stores/notification.store";
+import { useAuthStore } from "@/stores/auth.store";
+import { Spinner } from "@/components/ui/loader";
 import { 
   RefreshCw, 
   Target, 
@@ -14,7 +16,9 @@ import {
   ExternalLink,
   Search,
   Check,
-  Award
+  Award,
+  Link2Off,
+  UserCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -123,67 +127,284 @@ export function TodayRevisionCard({ revisions, problems, onReviewSelect }: Today
 }
 
 // 2. LeetCode Profile Card
-export function LeetcodeProfileCard() {
-  const username = localStorage.getItem("profile_leetcode_username") || "alex_leetcode";
+interface LeetCodeStats {
+  totalSolved: number;
+  totalQuestions: number;
+  easySolved: number;
+  totalEasy: number;
+  mediumSolved: number;
+  totalMedium: number;
+  hardSolved: number;
+  totalHard: number;
+  ranking: number;
+  contributionPoint: number;
+}
 
-  const handleOpenLeetCodeProfile = () => {
-    window.open(`https://leetcode.com/u/${username}/`, "_blank");
+export function LeetcodeProfileCard() {
+  const user = useAuthStore((state) => state.user);
+  const updateProfile = useAuthStore((state) => state.updateProfile);
+  const addToast = useNotificationStore((state: any) => state.addToast);
+
+  const [stats, setStats] = useState<LeetCodeStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [inputUsername, setInputUsername] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+
+  const fetchLeetcodeStats = async (username: string) => {
+    setLoadingStats(true);
+    setFetchError(null);
+    try {
+      const response = await fetch(`https://alfa-leetcode-api.onrender.com/${username}/profile`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch profile stats");
+      }
+      const data = await response.json();
+      if (data.errors || data.message || typeof data.totalSolved !== "number") {
+        throw new Error(data.errors || data.message || "Invalid LeetCode profile response");
+      }
+      setStats(data);
+    } catch (err: any) {
+      console.error(err);
+      setFetchError("Unable to load LeetCode data. Make sure the username is correct.");
+    } finally {
+      setLoadingStats(false);
+    }
   };
 
+  useEffect(() => {
+    if (user?.leetcodeUsername) {
+      fetchLeetcodeStats(user.leetcodeUsername);
+    } else {
+      setStats(null);
+      setFetchError(null);
+    }
+  }, [user?.leetcodeUsername]);
+
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanUsername = inputUsername.trim();
+    if (!cleanUsername) {
+      addToast("LeetCode username cannot be empty.", "warning");
+      return;
+    }
+    setSavingUsername(true);
+    try {
+      await updateProfile({
+        leetcodeUsername: cleanUsername
+      });
+      addToast(`LeetCode username set to: ${cleanUsername}`, "success");
+      setInputUsername("");
+    } catch (err) {
+      addToast("Failed to connect LeetCode profile.", "error");
+    } finally {
+      setSavingUsername(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setSavingUsername(true);
+    try {
+      await updateProfile({
+        leetcodeUsername: ""
+      });
+      addToast("LeetCode profile disconnected.", "info");
+    } catch (err) {
+      addToast("Failed to disconnect LeetCode profile.", "error");
+    } finally {
+      setSavingUsername(false);
+    }
+  };
+
+  const handleOpenLeetCodeProfile = () => {
+    if (user?.leetcodeUsername) {
+      window.open(`https://leetcode.com/u/${user.leetcodeUsername}/`, "_blank");
+    }
+  };
+
+  const getPercent = (solved: number, total: number) => {
+    if (!total) return 0;
+    return Math.min(100, Math.ceil((solved / total) * 100));
+  };
+
+  // Render State 1: Connecting / Saving Username to backend
+  if (savingUsername) {
+    return (
+      <div className="p-6 rounded-xl border border-border bg-card shadow-sm flex flex-col items-center justify-center h-full min-h-[300px] text-center">
+        <Spinner className="size-8 text-primary" />
+        <p className="text-xs text-muted-foreground mt-3 font-medium">Updating account settings...</p>
+      </div>
+    );
+  }
+
+  // Render State 2: Not connected yet
+  if (!user?.leetcodeUsername) {
+    return (
+      <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left min-h-[300px]">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <Typography variant="title" className="flex items-center gap-1.5 text-foreground">
+            <Award className="size-4 text-muted-foreground" />
+            LeetCode Profile
+          </Typography>
+          <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">
+            Disconnected
+          </span>
+        </div>
+
+        <div className="flex-1 py-1 space-y-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Link your LeetCode profile to pull solved difficulty statistics, current global ranking, and track consistency analytics directly inside CrackDSA.
+          </p>
+          <form onSubmit={handleConnect} className="space-y-2">
+            <div className="space-y-1">
+              <label htmlFor="leetcode-user-input" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                LeetCode Username:
+              </label>
+              <Input
+                id="leetcode-user-input"
+                type="text"
+                placeholder="Enter LeetCode username"
+                value={inputUsername}
+                onChange={(e) => setInputUsername(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <Button type="submit" size="sm" className="w-full text-xs cursor-pointer">
+              Connect Profile
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Render State 3: Loading stats from render API
+  if (loadingStats) {
+    return (
+      <div className="p-6 rounded-xl border border-border bg-card shadow-sm flex flex-col items-center justify-center h-full min-h-[300px] text-center">
+        <Spinner className="size-8 text-primary" />
+        <p className="text-xs text-muted-foreground mt-3 font-medium animate-pulse">Syncing LeetCode statistics...</p>
+      </div>
+    );
+  }
+
+  // Render State 4: Error loading stats
+  if (fetchError) {
+    return (
+      <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left min-h-[300px]">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <Typography variant="title" className="flex items-center gap-1.5 text-foreground">
+            <Award className="size-4 text-rose-500 animate-pulse" />
+            LeetCode Profile
+          </Typography>
+          <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-2 py-0.5 rounded-full uppercase">
+            Error
+          </span>
+        </div>
+
+        <div className="flex-1 py-4 flex flex-col justify-center space-y-3">
+          <p className="text-xs text-rose-500/90 font-medium bg-rose-500/5 border border-rose-500/10 p-3 rounded-lg leading-relaxed">
+            {fetchError}
+          </p>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="xs" 
+              onClick={() => fetchLeetcodeStats(user.leetcodeUsername!)} 
+              className="flex-1 text-xs cursor-pointer"
+            >
+              Retry Sync
+            </Button>
+            <Button 
+              variant="outline" 
+              size="xs" 
+              onClick={handleDisconnect}
+              className="flex-1 text-xs cursor-pointer text-muted-foreground hover:text-destructive flex items-center justify-center gap-1"
+            >
+              <Link2Off className="size-3" />
+              Disconnect
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render State 5: Stats loaded successfully
   return (
-    <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left">
+    <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left min-h-[300px]">
       <div className="flex items-center justify-between border-b border-border pb-3">
         <Typography variant="title" className="flex items-center gap-1.5 text-foreground">
-          <Award className="size-4 text-amber-500" />
-          2. LeetCode Profile
+          <Award className="size-4 text-amber-500 animate-in spin-in-12 duration-500" />
+          LeetCode Profile
         </Typography>
-        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">
+        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
+          <UserCheck className="size-3" />
           Connected
         </span>
       </div>
 
-      <div className="flex-1 space-y-3 py-1">
-        <div className="flex justify-between items-center bg-background/50 border border-border/60 p-2.5 rounded-lg">
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-foreground truncate">@{username}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Rank: 124,532</p>
+      {stats && (
+        <div className="flex-1 space-y-3 py-1">
+          <div className="flex justify-between items-center bg-background/50 border border-border/60 p-2.5 rounded-lg">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-foreground truncate">@{user.leetcodeUsername}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Rank: {stats.ranking ? stats.ranking.toLocaleString() : "N/A"}
+              </p>
+            </div>
+            <button 
+              onClick={handleDisconnect} 
+              className="text-[10px] font-semibold text-muted-foreground hover:text-destructive transition-colors px-2 py-0.5 rounded border border-border bg-background cursor-pointer"
+              title="Disconnect Leetcode username"
+            >
+              Disconnect
+            </button>
           </div>
-          <span className="text-[10px] text-emerald-500 bg-emerald-500/10 font-bold px-2 py-0.5 rounded shrink-0">Active</span>
+
+          {/* Stats metrics distribution */}
+          <div className="space-y-2 pt-1 text-xs">
+            <div className="space-y-0.5">
+              <div className="flex justify-between text-[10px] font-semibold">
+                <span className="text-emerald-600 dark:text-emerald-400">Easy Solves</span>
+                <span className="text-foreground">{stats.easySolved} / {stats.totalEasy}</span>
+              </div>
+              <div className="w-full bg-muted dark:bg-muted/40 h-1 rounded-full overflow-hidden">
+                <div 
+                  className="bg-emerald-500 h-full transition-all duration-500 ease-out" 
+                  style={{ width: `${getPercent(stats.easySolved, stats.totalEasy)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="flex justify-between text-[10px] font-semibold">
+                <span className="text-amber-600 dark:text-amber-400">Medium Solves</span>
+                <span className="text-foreground">{stats.mediumSolved} / {stats.totalMedium}</span>
+              </div>
+              <div className="w-full bg-muted dark:bg-muted/40 h-1 rounded-full overflow-hidden">
+                <div 
+                  className="bg-amber-500 h-full transition-all duration-500 ease-out" 
+                  style={{ width: `${getPercent(stats.mediumSolved, stats.totalMedium)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="flex justify-between text-[10px] font-semibold">
+                <span className="text-rose-600 dark:text-rose-400">Hard Solves</span>
+                <span className="text-foreground">{stats.hardSolved} / {stats.totalHard}</span>
+              </div>
+              <div className="w-full bg-muted dark:bg-muted/40 h-1 rounded-full overflow-hidden">
+                <div 
+                  className="bg-rose-500 h-full transition-all duration-500 ease-out" 
+                  style={{ width: `${getPercent(stats.hardSolved, stats.totalHard)}%` }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* Mock metrics distribution */}
-        <div className="space-y-2 pt-1 text-xs">
-          <div className="space-y-0.5">
-            <div className="flex justify-between text-[10px] font-semibold">
-              <span className="text-emerald-600 dark:text-emerald-400">Easy Solves</span>
-              <span className="text-foreground">145 / 820</span>
-            </div>
-            <div className="w-full bg-muted dark:bg-muted/40 h-1 rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-full w-[17%]" />
-            </div>
-          </div>
-
-          <div className="space-y-0.5">
-            <div className="flex justify-between text-[10px] font-semibold">
-              <span className="text-amber-600 dark:text-amber-400">Medium Solves</span>
-              <span className="text-foreground">162 / 1640</span>
-            </div>
-            <div className="w-full bg-muted dark:bg-muted/40 h-1 rounded-full overflow-hidden">
-              <div className="bg-amber-500 h-full w-[10%]" />
-            </div>
-          </div>
-
-          <div className="space-y-0.5">
-            <div className="flex justify-between text-[10px] font-semibold">
-              <span className="text-rose-600 dark:text-rose-400">Hard Solves</span>
-              <span className="text-foreground">35 / 780</span>
-            </div>
-            <div className="w-full bg-muted dark:bg-muted/40 h-1 rounded-full overflow-hidden">
-              <div className="bg-rose-500 h-full w-[4.5%]" />
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="pt-2">
         <Button 

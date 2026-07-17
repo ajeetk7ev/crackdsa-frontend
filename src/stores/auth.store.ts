@@ -36,6 +36,11 @@ export interface User {
     longest: number;
     lastSolvedDate: string | null;
   };
+  solvedDates?: string[];
+  bio?: string;
+  leetcodeUsername?: string;
+  location?: string;
+  website?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,14 +59,14 @@ interface AuthState {
     lastname: string,
     email: string,
     password: string,
-    rememberMe: boolean
-  ) => Promise<{ success: boolean; fieldErrors?: FieldErrors }>;
+    rememberMe: boolean,
+  ) => Promise<{ success: boolean; fieldErrors?: FieldErrors; error?: string }>;
 
   login: (
     email: string,
     password: string,
-    rememberMe: boolean
-  ) => Promise<{ success: boolean; fieldErrors?: FieldErrors }>;
+    rememberMe: boolean,
+  ) => Promise<{ success: boolean; fieldErrors?: FieldErrors; error?: string }>;
 
   logout: () => Promise<void>;
 
@@ -79,7 +84,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   // ---------- Signup ----------
   signup: async (firstname, lastname, email, password, rememberMe) => {
-    set({ isLoading: true });
     const notification = useNotificationStore.getState();
 
     try {
@@ -93,11 +97,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       const { user, accessToken } = response.data.data;
       setAccessToken(accessToken);
-      set({ user, isAuthenticated: true, isLoading: false });
+      set({ user, isAuthenticated: true });
       notification.success(`Welcome to CrackDSA, ${user.firstname}!`);
       return { success: true };
     } catch (err: any) {
-      set({ isLoading: false });
       const data = err?.response?.data;
 
       // Validation field errors (422)
@@ -105,34 +108,61 @@ export const useAuthStore = create<AuthState>((set) => ({
         return { success: false, fieldErrors: data.errors };
       }
 
-      notification.error(data?.message || "Registration failed. Please try again.");
-      return { success: false };
+      // Conflict errors (409) (e.g. email already exists)
+      if (err?.response?.status === 409) {
+        const msg =
+          data?.message || "An account with this email address already exists.";
+        return {
+          success: false,
+          fieldErrors: { email: msg },
+          error: msg,
+        };
+      }
+
+      const errMsg = data?.message || "Registration failed. Please try again.";
+      notification.error(errMsg);
+      return { success: false, error: errMsg };
     }
   },
 
   // ---------- Login ----------
   login: async (email, password, rememberMe) => {
-    set({ isLoading: true });
     const notification = useNotificationStore.getState();
 
     try {
-      const response = await api.post("/auth/login", { email, password, rememberMe });
+      const response = await api.post("/auth/login", {
+        email,
+        password,
+        rememberMe,
+      });
 
       const { user, accessToken } = response.data.data;
       setAccessToken(accessToken);
-      set({ user, isAuthenticated: true, isLoading: false });
+      set({ user, isAuthenticated: true });
       notification.success(`Welcome back, ${user.firstname}!`);
       return { success: true };
     } catch (err: any) {
-      set({ isLoading: false });
       const data = err?.response?.data;
 
+      // Validation field errors (422)
       if (err?.response?.status === 422 && data?.errors) {
         return { success: false, fieldErrors: data.errors };
       }
 
-      notification.error(data?.message || "Login failed. Please check your credentials.");
-      return { success: false };
+      // Credentials/authorization errors (401 / 403)
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        const msg = data?.message || "Invalid email or password.";
+        return {
+          success: false,
+
+          error: msg,
+        };
+      }
+
+      const errMsg =
+        data?.message || "Login failed. Please check your credentials.";
+      notification.error(errMsg);
+      return { success: false, error: errMsg };
     }
   },
 

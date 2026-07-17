@@ -6,6 +6,7 @@ import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/loader";
 
 import {
   Flame,
@@ -16,6 +17,7 @@ import {
   Share2,
   Edit2,
   Code,
+  Link2Off
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +53,11 @@ export function ProfilePage() {
   const [profileUsername, setProfileUsername] = useState("");
   const [leetcodeUsername, setLeetcodeUsername] = useState("");
   
+  // LeetCode API Stats States
+  const [leetcodeStats, setLeetcodeStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
+
   // Modals Visibility
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLeetcodeOpen, setIsLeetcodeOpen] = useState(false);
@@ -60,6 +67,36 @@ export function ProfilePage() {
   const [editUsername, setEditUsername] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editLeetcodeUser, setEditLeetcodeUser] = useState("");
+
+  const fetchLeetcodeStats = async (username: string) => {
+    setLoadingStats(true);
+    setStatsError(null);
+    try {
+      const response = await fetch(`https://alfa-leetcode-api.onrender.com/${username}/profile`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch profile stats");
+      }
+      const data = await response.json();
+      if (data.errors || data.message || typeof data.totalSolved !== "number") {
+        throw new Error(data.errors || data.message || "Invalid LeetCode response");
+      }
+      setLeetcodeStats(data);
+    } catch (err: any) {
+      console.error(err);
+      setStatsError("Failed to load statistics");
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  useEffect(() => {
+    if (leetcodeUsername) {
+      fetchLeetcodeStats(leetcodeUsername);
+    } else {
+      setLeetcodeStats(null);
+      setStatsError(null);
+    }
+  }, [leetcodeUsername]);
 
   const loadProfileData = async () => {
     try {
@@ -130,15 +167,30 @@ export function ProfilePage() {
 
   // 2. Save Leetcode username
   const handleSaveLeetcodeUser = async () => {
+    const cleanUser = editLeetcodeUser.trim();
     try {
       await updateProfile({
-        leetcodeUsername: editLeetcodeUser
+        leetcodeUsername: cleanUser
       });
-      setLeetcodeUsername(editLeetcodeUser);
-      addToast(`LeetCode profile connected: ${editLeetcodeUser}`, "success");
+      setLeetcodeUsername(cleanUser);
+      addToast(cleanUser ? `LeetCode profile connected: ${cleanUser}` : "LeetCode profile disconnected", "success");
       setIsLeetcodeOpen(false);
     } catch {
       addToast("Failed to save Leetcode username.", "error");
+    }
+  };
+
+  // 2.5 Disconnect Leetcode username
+  const handleDisconnectLeetcode = async () => {
+    try {
+      await updateProfile({
+        leetcodeUsername: ""
+      });
+      setLeetcodeUsername("");
+      setEditLeetcodeUser("");
+      addToast("LeetCode profile disconnected.", "info");
+    } catch {
+      addToast("Failed to disconnect LeetCode username.", "error");
     }
   };
 
@@ -204,16 +256,19 @@ export function ProfilePage() {
     while (cur <= today) {
       const dateStr = cur.toISOString().split("T")[0];
       
-      // Calculate solved count on this day
-      const count = submissions.filter(
-        (s) => s.status === "Correct" && s.date.startsWith(dateStr)
+      // Calculate solved count on this day from progressList
+      const count = progressList.filter(
+        (p) =>
+          ["Solved", "Needs Revision", "Revised Once", "Mastered"].includes(p.status) &&
+          p.updatedAt &&
+          p.updatedAt.startsWith(dateStr)
       ).length;
 
       list.push({ dateStr, count, dateObj: new Date(cur) });
       cur.setDate(cur.getDate() + 1);
     }
     return list;
-  }, [submissions]);
+  }, [progressList]);
 
   // Generate month labels aligning with the 53 week columns
   const monthLabels = useMemo(() => {
@@ -494,60 +549,115 @@ export function ProfilePage() {
                 <Code className="size-4 text-amber-500" />
                 LeetCode Profile Connection
               </Typography>
-              <Button
-                onClick={() => setIsLeetcodeOpen(true)}
-                variant="ghost"
-                size="xs"
-                className="h-6 text-xs text-amber-600 hover:bg-amber-500/10 cursor-pointer"
-              >
-                Change Username
-              </Button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-6 sm:items-center py-2 justify-between">
-              <div className="flex items-center gap-4">
-                <div className="size-12 bg-amber-500/10 rounded-full flex items-center justify-center font-bold text-amber-600 font-mono">
-                  LC
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">@{leetcodeUsername}</p>
-                  <p className="text-xs text-muted-foreground">Connected solved profiles</p>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <a
-                  href={`https://leetcode.com/${leetcodeUsername}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-9 px-4 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/50 cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+              {leetcodeUsername && (
+                <Button
+                  onClick={() => setIsLeetcodeOpen(true)}
+                  variant="ghost"
+                  size="xs"
+                  className="h-6 text-xs text-amber-600 hover:bg-amber-500/10 cursor-pointer"
                 >
-                  View LeetCode Profile
-                  <ExternalLink className="size-3.5" />
-                </a>
-              </div>
+                  Change Username
+                </Button>
+              )}
             </div>
 
-            {/* Leetcode Solved categories numbers */}
-            <div className="grid grid-cols-4 gap-4 border-t border-border/30 pt-4 text-xs text-center">
-              <div>
-                <span className="font-semibold text-muted-foreground block text-[10px]">Rating</span>
-                <span className="text-sm font-bold text-foreground">1,850</span>
+            {!leetcodeUsername ? (
+              <div className="py-4 text-center space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  No LeetCode profile linked. Sync stats to display coding progress.
+                </p>
+                <Button
+                  onClick={() => setIsLeetcodeOpen(true)}
+                  size="sm"
+                  className="text-xs cursor-pointer shadow-sm mx-auto"
+                >
+                  Connect Profile
+                </Button>
               </div>
-              <div>
-                <span className="font-semibold text-muted-foreground block text-[10px]">Ranking</span>
-                <span className="text-sm font-bold text-foreground">12,402</span>
+            ) : loadingStats ? (
+              <div className="py-6 flex flex-col items-center justify-center text-center">
+                <Spinner className="size-6 text-primary" />
+                <p className="text-xs text-muted-foreground mt-2 animate-pulse">Syncing statistics...</p>
               </div>
-              <div>
-                <span className="font-semibold text-muted-foreground block text-[10px]">Solved Ratio</span>
-                <span className="text-sm font-bold text-foreground">220/500</span>
+            ) : statsError ? (
+              <div className="py-4 space-y-3">
+                <p className="text-xs text-rose-500 font-medium">
+                  Could not retrieve stats for @{leetcodeUsername}.
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => fetchLeetcodeStats(leetcodeUsername)}
+                    className="text-xs cursor-pointer"
+                  >
+                    Retry Sync
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={handleDisconnectLeetcode}
+                    className="text-xs cursor-pointer text-muted-foreground hover:text-destructive flex items-center gap-1"
+                  >
+                    <Link2Off className="size-3" />
+                    Disconnect
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <span className="text-emerald-500 font-bold block text-[9px]">Easy: 45</span>
-                <span className="text-amber-500 font-bold block text-[9px]">Med: 120</span>
-                <span className="text-rose-500 font-bold block text-[9px]">Hard: 55</span>
+            ) : leetcodeStats ? (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4 sm:items-center py-2 justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="size-12 bg-amber-500/10 rounded-full flex items-center justify-center font-bold text-amber-600 font-mono">
+                      LC
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">@{leetcodeUsername}</p>
+                      <p className="text-xs text-muted-foreground">Connected solved profiles</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <a
+                      href={`https://leetcode.com/u/${leetcodeUsername}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-9 px-4 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/50 cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+                    >
+                      View LeetCode Profile
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Leetcode Solved categories numbers */}
+                <div className="grid grid-cols-4 gap-4 border-t border-border/30 pt-4 text-xs text-center">
+                  <div>
+                    <span className="font-semibold text-muted-foreground block text-[10px]">Points</span>
+                    <span className="text-sm font-bold text-foreground">
+                      {leetcodeStats.contributionPoint || 0}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-muted-foreground block text-[10px]">Ranking</span>
+                    <span className="text-sm font-bold text-foreground truncate block">
+                      {leetcodeStats.ranking ? leetcodeStats.ranking.toLocaleString() : "N/A"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-muted-foreground block text-[10px]">Solved Ratio</span>
+                    <span className="text-sm font-bold text-foreground">
+                      {leetcodeStats.totalSolved} / {leetcodeStats.totalQuestions}
+                    </span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-emerald-500 font-bold block text-[9px]">Easy: {leetcodeStats.easySolved}</span>
+                    <span className="text-amber-500 font-bold block text-[9px]">Med: {leetcodeStats.mediumSolved}</span>
+                    <span className="text-rose-500 font-bold block text-[9px]">Hard: {leetcodeStats.hardSolved}</span>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
 
           {/* LINKEDIN PUBLIC SHARE CARD PREVIEW */}

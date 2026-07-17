@@ -4,11 +4,20 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useThemeStore } from "@/stores/theme.store";
 import { Sun, Moon, Calendar, Zap, Target } from "lucide-react";
 import { ToastContainer } from "@/components/common/Toast";
+import { PageLoader } from "@/components/ui/loader";
 
 export function AuthLayout() {
   const { theme, toggleTheme } = useThemeStore();
-  const { user, isLoading } = useAuthStore();
+  const { user, isLoading, checkAuth } = useAuthStore();
   const navigate = useNavigate();
+
+  // Perform initial session check
+  useEffect(() => {
+    const initAuth = async () => {
+      await checkAuth();
+    };
+    initAuth();
+  }, [checkAuth]);
 
   // Redirect immediately if already signed in
   useEffect(() => {
@@ -16,6 +25,10 @@ export function AuthLayout() {
       navigate("/dashboard", { replace: true });
     }
   }, [user, isLoading, navigate]);
+
+  if (isLoading) {
+    return <PageLoader message="Verifying session..." />;
+  }
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">

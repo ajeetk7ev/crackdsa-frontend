@@ -168,13 +168,39 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50 transition-colors duration-200;
+    @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground antialiased;
   }
   html {
     @apply font-sans;
+  }
+
+  /* Smooth transitions for theme toggling */
+  body, 
+  aside, 
+  header, 
+  main, 
+  footer,
+  .bg-card,
+  .bg-background-secondary\/40,
+  .border,
+  .border-b,
+  .border-r,
+  .border-t,
+  .border-l,
+  .border-border,
+  button, 
+  input, 
+  textarea,
+  h1, h2, h3, h4, h5, h6,
+  p,
+  span,
+  a,
+  svg,
+  .lucide {
+    @apply transition-colors duration-300 ease-in-out;
   }
 }
 
