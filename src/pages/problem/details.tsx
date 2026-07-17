@@ -69,35 +69,35 @@ export function ProblemDetailsPage() {
   const loadProblemDetails = async () => {
     try {
       const probRes = await api.get(`/problems/${id}`);
-      setProblem(probRes.data);
+      setProblem(probRes.data.data);
 
-      // Fetch active revisions list
-      const revRes = await api.get("/revisions");
-      const activeRev = revRes.data.find((r: Revision) => r.problemId === id);
-      setRevision(activeRev || null);
+      // Fetch unified progress details from backend
+      const progRes = await api.get(`/progress/${id}`);
+      const prog = progRes.data.data;
+      
+      setIsBookmarked(prog.isBookmarked || false);
+      setNotesText(prog.note || "");
+      setTimeTaken(prog.timeTaken || "38 min");
 
-      if (activeRev) {
-        // Sync custom review date input format (YYYY-MM-DD)
-        const d = new Date(activeRev.nextReviewDate);
+      if (prog.srs && prog.srs.nextReviewDate) {
+        setRevision(prog.srs);
+        const d = new Date(prog.srs.nextReviewDate);
         setCustomReviewDate(d.toISOString().split("T")[0]);
+      } else {
+        setRevision(null);
+        setCustomReviewDate("");
       }
+      
+      // Setup submissions/progress details to display in history timeline
+      setSubmissions(prog.totalAttempts > 0 ? [{
+        id: prog.id,
+        status: prog.status === "Attempted" ? "Wrong Answer" : "Correct",
+        date: prog.updatedAt,
+        timeSpentMinutes: prog.timeTaken ? parseInt(prog.timeTaken.replace(" min", "")) : 38,
+        confidence: prog.status === "Mastered" ? "High" : "Medium",
+        takeaway: prog.note
+      }] : []);
 
-      // Fetch note
-      const noteRes = await api.get(`/notes/${id}`);
-      setNotesText(noteRes.data.note || "");
-
-      // Load bookmarks from local storage
-      const bookmarks = JSON.parse(localStorage.getItem("crackdsa_bookmarks") || "[]");
-      setIsBookmarked(bookmarks.includes(id || ""));
-
-      // Load submissions
-      const rawSubs = localStorage.getItem("mock_submissions") || "[]";
-      const userSubs = JSON.parse(rawSubs).filter((s: any) => s.problemId === id);
-      setSubmissions(userSubs.reverse()); // latest first
-
-      // Load time taken override if saved
-      const savedTime = localStorage.getItem(`time_taken_${id}`);
-      if (savedTime) setTimeTaken(savedTime);
     } catch {
       addToast("Failed to fetch problem workspace records.", "error");
       navigate("/problems");
@@ -115,12 +115,8 @@ export function ProblemDetailsPage() {
     setSyncing(true);
     try {
       await api.post(`/notes/${id}`, { note: notesText });
-      
-      const rawNotes = JSON.parse(localStorage.getItem("mock_notes") || "{}");
-      rawNotes[`usr-2_${id}`] = notesText;
-      localStorage.setItem("mock_notes", JSON.stringify(rawNotes));
-
       addToast("Related notes updated successfully.", "success");
+      loadProblemDetails();
     } catch {
       addToast("Failed to save note details.", "error");
     } finally {
@@ -129,59 +125,33 @@ export function ProblemDetailsPage() {
   };
 
   // Toggle Bookmark
-  const handleBookmarkToggle = () => {
-    const bookmarks = JSON.parse(localStorage.getItem("crackdsa_bookmarks") || "[]");
-    let updated: string[] = [];
-
-    if (isBookmarked) {
-      updated = bookmarks.filter((bId: string) => bId !== id);
-      addToast("Problem removed from bookmarks.", "info");
-    } else {
-      updated = [...bookmarks, id || ""];
-      addToast("Problem bookmarked.", "success");
+  const handleBookmarkToggle = async () => {
+    try {
+      await api.put(`/progress/${id}`, { isBookmarked: !isBookmarked });
+      addToast(isBookmarked ? "Problem removed from bookmarks." : "Problem bookmarked.", isBookmarked ? "info" : "success");
+      setIsBookmarked(!isBookmarked);
+    } catch {
+      addToast("Failed to toggle bookmark.", "error");
     }
-
-    localStorage.setItem("crackdsa_bookmarks", JSON.stringify(updated));
-    setIsBookmarked(!isBookmarked);
   };
 
   // Save Solve Time taken
-  const handleSaveTimeTaken = () => {
-    localStorage.setItem(`time_taken_${id}`, timeTaken);
-    setIsEditingTime(false);
-    addToast("Solved duration stats updated.", "success");
+  const handleSaveTimeTaken = async () => {
+    try {
+      await api.put(`/progress/${id}`, { timeTaken: timeTaken });
+      setIsEditingTime(false);
+      addToast("Solved duration stats updated.", "success");
+      loadProblemDetails();
+    } catch {
+      addToast("Failed to update solve duration.", "error");
+    }
   };
 
   // Reschedule revision by days offset
   const handleRescheduleDays = async (days: number) => {
     setSyncing(true);
     try {
-      const nextDate = new Date();
-      nextDate.setDate(nextDate.getDate() + days);
-      const nextDateIso = nextDate.toISOString();
-
-      let revs = JSON.parse(localStorage.getItem("mock_revisions") || "[]");
-      const activeIdx = revs.findIndex((r: any) => r.problemId === id);
-
-      if (activeIdx !== -1) {
-        revs[activeIdx].nextReviewDate = nextDateIso;
-        revs[activeIdx].interval = days;
-        revs[activeIdx].status = "todo";
-        revs[activeIdx].repetitions = (revs[activeIdx].repetitions || 0) + 1;
-      } else {
-        revs.push({
-          id: `rev-${Math.random().toString(36).substring(2, 9)}`,
-          userId: "usr-2",
-          problemId: id,
-          nextReviewDate: nextDateIso,
-          interval: days,
-          easeFactor: 2.5,
-          repetitions: 1,
-          status: "todo",
-        });
-      }
-
-      localStorage.setItem("mock_revisions", JSON.stringify(revs));
+      await api.post(`/revisions/${id}/reschedule`, { days });
       addToast(`Revision rescheduled: due in ${days} days.`, "success");
       loadProblemDetails();
     } catch {
@@ -198,29 +168,7 @@ export function ProblemDetailsPage() {
 
     setSyncing(true);
     try {
-      const nextDate = new Date(dateStr);
-      const nextDateIso = nextDate.toISOString();
-
-      let revs = JSON.parse(localStorage.getItem("mock_revisions") || "[]");
-      const activeIdx = revs.findIndex((r: any) => r.problemId === id);
-
-      if (activeIdx !== -1) {
-        revs[activeIdx].nextReviewDate = nextDateIso;
-        revs[activeIdx].status = "todo";
-      } else {
-        revs.push({
-          id: `rev-${Math.random().toString(36).substring(2, 9)}`,
-          userId: "usr-2",
-          problemId: id,
-          nextReviewDate: nextDateIso,
-          interval: 3,
-          easeFactor: 2.5,
-          repetitions: 1,
-          status: "todo",
-        });
-      }
-
-      localStorage.setItem("mock_revisions", JSON.stringify(revs));
+      await api.post(`/revisions/${id}/custom-date`, { date: dateStr });
       addToast(`Revision scheduled for ${new Date(dateStr).toLocaleDateString()}`, "success");
       loadProblemDetails();
     } catch {
@@ -230,12 +178,12 @@ export function ProblemDetailsPage() {
     }
   };
 
-
   // Status Resolver Helper
   const getProblemStatusLabel = () => {
-    const hasFailed = submissions.some((s) => s.status !== "Correct");
-    const correctSub = submissions.filter((s) => s.status === "Correct");
-
+    if (submissions.length === 0) return "Not Started";
+    const sub = submissions[0];
+    if (sub.status === "Wrong Answer") return "Attempted";
+    
     if (revision) {
       if (revision.interval >= 15) return "Mastered";
       if (revision.status === "todo") {
@@ -244,29 +192,23 @@ export function ProblemDetailsPage() {
       }
       return "Revised Once";
     }
-
-    if (correctSub.length > 0) return "Solved";
-    if (hasFailed) return "Attempted";
-    return "Not Started";
+    return "Solved";
   };
 
   const statusLabel = getProblemStatusLabel();
 
   // Solved On date calculations
   const getSolvedOnDateStr = () => {
-    const correctOnes = submissions.filter((s) => s.status === "Correct");
-    if (correctOnes.length === 0) return "-";
-    const oldest = new Date(correctOnes[correctOnes.length - 1].date);
-    return oldest.toLocaleDateString("en-US", { day: "numeric", month: "long" });
+    if (submissions.length === 0 || submissions[0].status === "Wrong Answer") return "-";
+    return new Date(submissions[0].date).toLocaleDateString("en-US", { day: "numeric", month: "long" });
   };
 
   const solvedOnDate = getSolvedOnDateStr();
 
   // Last Revised date relative label
   const getLastRevisedLabel = () => {
-    const correctOnes = submissions.filter((s) => s.status === "Correct");
-    if (correctOnes.length <= 1) return "-";
-    const latest = new Date(correctOnes[0].date); // latest solve
+    if (submissions.length === 0 || !revision || revision.repetitions <= 1) return "-";
+    const latest = new Date(submissions[0].date);
     const diffTime = Math.abs(Date.now() - latest.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     

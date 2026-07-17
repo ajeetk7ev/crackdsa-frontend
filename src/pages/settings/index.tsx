@@ -61,44 +61,23 @@ export function SettingsPage() {
 
   // Load Settings database Binds
   useEffect(() => {
-    const savedFirstName = localStorage.getItem("profile_first_name");
-    const savedLastName = localStorage.getItem("profile_last_name");
-    const savedName = localStorage.getItem("profile_name") || authUser?.name || "Alex Miller";
-    const savedUser = localStorage.getItem("profile_username") || "alex_miller";
-    const savedBio = localStorage.getItem("profile_bio") || "SDE Prep | Targeting Mid-Level placement boards";
-    const savedLC = localStorage.getItem("profile_leetcode_username") || "alex_leetcode";
+    if (authUser) {
+      setFirstName(authUser.firstname || "");
+      setLastName(authUser.lastname || "");
+      setUsername(authUser.username || "");
+      setBio(authUser.bio || "");
+      setLeetcodeUser(authUser.leetcodeUsername || "");
 
-    let initialFirst = "";
-    let initialLast = "";
+      // Load custom preferences
+      setEditorTheme(authUser.preferences?.theme || "one-dark");
+      setDefaultLang("cpp");
+      setReviewStrategy(authUser.preferences?.revisionStrategy || "sm2");
 
-    if (savedFirstName !== null && savedLastName !== null) {
-      initialFirst = savedFirstName;
-      initialLast = savedLastName;
-    } else {
-      const parts = savedName.trim().split(/\s+/);
-      initialFirst = parts[0] || "";
-      initialLast = parts.slice(1).join(" ") || "";
-    }
-
-    setFirstName(initialFirst);
-    setLastName(initialLast);
-    setUsername(savedUser);
-    setBio(savedBio);
-    setLeetcodeUser(savedLC);
-
-    // Load custom preferences from local storage
-    setEditorTheme(localStorage.getItem("pref_editor_theme") || "one-dark");
-    setDefaultLang(localStorage.getItem("pref_default_lang") || "cpp");
-    setReviewStrategy(localStorage.getItem("pref_review_strategy") || "sm2");
-
-    // Notifications Binds
-    const notifyStr = localStorage.getItem("crackdsa_settings_notifications");
-    if (notifyStr) {
-      const parsed = JSON.parse(notifyStr);
-      setDailyStreak(!!parsed.dailyStreak);
-      setRevisionReminder(!!parsed.revisionReminder);
-      setWeeklyReport(!!parsed.weeklyReport);
-      setMonthlyReport(!!parsed.monthlyReport);
+      // Notifications Binds
+      setDailyStreak(!!authUser.notifications?.streakReminder);
+      setRevisionReminder(!!authUser.notifications?.revisionReminder);
+      setWeeklyReport(!!authUser.notifications?.weeklyReport);
+      setMonthlyReport(!!authUser.notifications?.monthlyReport);
     }
   }, [authUser]);
 
@@ -110,16 +89,13 @@ export function SettingsPage() {
     }
 
     try {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`;
-      localStorage.setItem("profile_first_name", firstName.trim());
-      localStorage.setItem("profile_last_name", lastName.trim());
-      localStorage.setItem("profile_name", fullName);
-      localStorage.setItem("profile_username", username);
-      localStorage.setItem("profile_bio", bio);
-      localStorage.setItem("profile_leetcode_username", leetcodeUser);
-
-      // Trigger store action
-      await updateProfile(fullName);
+      await updateProfile({
+        firstname: firstName.trim(),
+        lastname: lastName.trim(),
+        username: username.trim(),
+        bio: bio.trim(),
+        leetcodeUsername: leetcodeUser.trim(),
+      });
       addToast("Profile settings saved successfully.", "success");
     } catch {
       addToast("Failed to update profile settings.", "error");
@@ -149,18 +125,37 @@ export function SettingsPage() {
   };
 
   // 3. Save Custom Preferences Theme & Code settings
-  const handleSavePreferences = () => {
-    localStorage.setItem("pref_editor_theme", editorTheme);
-    localStorage.setItem("pref_default_lang", defaultLang);
-    localStorage.setItem("pref_review_strategy", reviewStrategy);
-    addToast("Preferences saved successfully.", "success");
+  const handleSavePreferences = async () => {
+    try {
+      await updateProfile({
+        preferences: {
+          theme: editorTheme as any,
+          revisionStrategy: reviewStrategy as any,
+          revisionSchedule: authUser?.preferences?.revisionSchedule || [1, 3, 7, 30],
+          pomodoro: authUser?.preferences?.pomodoro || { focusTime: 25, breakTime: 5, longBreakTime: 15 }
+        }
+      });
+      addToast("Preferences saved successfully.", "success");
+    } catch {
+      addToast("Failed to save preferences.", "error");
+    }
   };
 
   // 4. Save Notifications preferences
-  const handleSaveNotifications = () => {
-    const payload = { dailyStreak, revisionReminder, weeklyReport, monthlyReport };
-    localStorage.setItem("crackdsa_settings_notifications", JSON.stringify(payload));
-    addToast("Notification preferences updated.", "success");
+  const handleSaveNotifications = async () => {
+    try {
+      await updateProfile({
+        notifications: {
+          streakReminder: dailyStreak,
+          revisionReminder: revisionReminder,
+          weeklyReport: weeklyReport,
+          monthlyReport: monthlyReport,
+        }
+      });
+      addToast("Notification preferences updated.", "success");
+    } catch {
+      addToast("Failed to update notification preferences.", "error");
+    }
   };
 
   // 5. Reset All Progress (keeping login details)

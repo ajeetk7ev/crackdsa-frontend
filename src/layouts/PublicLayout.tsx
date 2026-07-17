@@ -18,13 +18,13 @@ export function PublicLayout() {
         </Link>
         <div className="flex items-center gap-4">
           <Link
-            to="/auth/login"
+            to="/login"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Sign In
           </Link>
           <Link
-            to="/auth/register"
+            to="/signup"
             className="text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/95 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
           >
             Get Started

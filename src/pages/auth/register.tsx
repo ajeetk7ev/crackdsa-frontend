@@ -212,7 +212,7 @@ export function RegisterPage() {
 
       <p className="text-xs text-center text-muted-foreground">
         Already have an account?{" "}
-        <Link to="/auth/login" className="text-foreground hover:underline font-semibold">
+        <Link to="/login" className="text-foreground hover:underline font-semibold">
           Sign In
         </Link>
       </p>

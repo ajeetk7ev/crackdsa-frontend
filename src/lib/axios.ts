@@ -87,8 +87,9 @@ api.interceptors.response.use(
         processPendingQueue(refreshError, null);
 
         // Clear in-memory state and redirect to login if not already there
-        if (!window.location.pathname.startsWith("/auth")) {
-          window.location.href = "/auth/login?expired=true";
+        const authPaths = ["/login", "/signup", "/forgot-password", "/reset-password", "/google/success"];
+        if (!authPaths.includes(window.location.pathname)) {
+          window.location.href = "/login?expired=true";
         }
         return Promise.reject(refreshError);
       } finally {

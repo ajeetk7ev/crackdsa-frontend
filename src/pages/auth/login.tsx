@@ -105,7 +105,7 @@ export function LoginPage() {
               Password
             </Typography>
             <Link
-              to="/auth/forgot-password"
+              to="/forgot-password"
               className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               Forgot password?
@@ -159,7 +159,7 @@ export function LoginPage() {
 
       <p className="text-xs text-center text-muted-foreground">
         Don't have an account?{" "}
-        <Link to="/auth/register" className="text-foreground hover:underline font-semibold">
+        <Link to="/signup" className="text-foreground hover:underline font-semibold">
           Create Account
         </Link>
       </p>

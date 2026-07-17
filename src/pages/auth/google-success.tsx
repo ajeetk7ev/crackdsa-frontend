@@ -33,13 +33,13 @@ export function GoogleSuccessPage() {
 
     if (!token) {
       notification.error("Google authentication failed. No token received.");
-      navigate("/auth/login", { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
 
     // Store the access token in memory and immediately clean the URL
     setAccessToken(token);
-    window.history.replaceState({}, document.title, "/auth/google/success");
+    window.history.replaceState({}, document.title, "/google/success");
 
     // Fetch the current user using the new token
     api
@@ -53,7 +53,7 @@ export function GoogleSuccessPage() {
       .catch(() => {
         setAccessToken(null);
         notification.error("Failed to load your profile after Google sign-in. Please try again.");
-        navigate("/auth/login", { replace: true });
+        navigate("/login", { replace: true });
       });
   }, []);
 

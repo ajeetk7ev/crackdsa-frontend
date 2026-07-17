@@ -35,14 +35,31 @@ export function StatusChangeModal({
   // Initialize values when modal opens
   useEffect(() => {
     if (isOpen && problemId) {
-      const subs = JSON.parse(localStorage.getItem("mock_submissions") || "[]");
-      const notes = JSON.parse(localStorage.getItem("mock_notes") || "{}");
-      
-      const probSubs = subs.filter((s: any) => s.problemId === problemId);
-      setAttempts(probSubs.length + 1);
+      const loadProblemProgress = async () => {
+        try {
+          const res = await api.get(`/progress/${problemId}`);
+          const p = res.data.data;
+          
+          setSelectedStatus(p.status || "Solved");
+          setAttempts((p.totalAttempts || 0) + 1); // Suggest next attempt index
+          setTakeaway(p.note || "");
+          
+          if (p.timeTaken) {
+            const mins = p.timeTaken.replace(" min", "");
+            setTimeSpent(mins);
+          } else {
+            setTimeSpent("0");
+          }
+        } catch {
+          // Defaults if no progress record exists yet in database
+          setSelectedStatus("Solved");
+          setAttempts(1);
+          setTakeaway("");
+          setTimeSpent("0");
+        }
+      };
 
-      const noteKey = `usr-2_${problemId}`;
-      setTakeaway(notes[noteKey] || "");
+      loadProblemProgress();
 
       // Check if there was an active Pomodoro timer for this specific problem
       if (pomodoroStore.activeProblemId === problemId) {
@@ -55,8 +72,6 @@ export function StatusChangeModal({
           pomodoroStore.pauseTimer();
           addToast("Active Pomodoro timer paused during status logging.", "info");
         }
-      } else {
-        setTimeSpent("0");
       }
     }
   }, [isOpen, problemId]);
@@ -66,125 +81,19 @@ export function StatusChangeModal({
     setSubmitting(true);
 
     try {
-      let revs = JSON.parse(localStorage.getItem("mock_revisions") || "[]");
-      let subs = JSON.parse(localStorage.getItem("mock_submissions") || "[]");
-      const todayStr = new Date().toISOString();
-
-      // Track attempt duration, confidence, and mistakes inside submission record
-      const submissionStatus = (selectedStatus === "Attempted") ? "Wrong Answer" : "Correct";
-
-      if (selectedStatus === "Not Started") {
-        revs = revs.filter((r: any) => r.problemId !== problemId);
-        subs = subs.filter((s: any) => s.problemId !== problemId);
-      } 
-      else if (selectedStatus === "Attempted") {
-        revs = revs.filter((r: any) => r.problemId !== problemId);
-        subs = subs.filter((s: any) => s.problemId !== problemId);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId,
-          status: submissionStatus,
-          date: todayStr,
-          timeSpentMinutes: Number(timeSpent),
-          confidence,
-          takeaway,
-        });
-      } 
-      else if (selectedStatus === "Solved") {
-        subs = subs.filter((s: any) => s.problemId !== problemId);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId,
-          status: submissionStatus,
-          date: todayStr,
-          timeSpentMinutes: Number(timeSpent),
-          confidence,
-          takeaway,
-        });
-        if (!revs.some((r: any) => r.problemId === problemId)) {
-          revs.push({
-            id: `rev-${Math.random()}`,
-            userId: "usr-2",
-            problemId,
-            nextReviewDate: todayStr,
-            interval: 1,
-            easeFactor: 2.5,
-            repetitions: 1,
-            status: "todo",
-          });
-        }
-      } 
-      else if (selectedStatus === "Revised Once") {
-        subs = subs.filter((s: any) => s.problemId !== problemId);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId,
-          status: submissionStatus,
-          date: todayStr,
-          timeSpentMinutes: Number(timeSpent),
-          confidence,
-          takeaway,
-        });
-        revs = revs.filter((r: any) => r.problemId !== problemId);
-        revs.push({
-          id: `rev-${Math.random()}`,
-          userId: "usr-2",
-          problemId,
-          nextReviewDate: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(),
-          interval: 3,
-          easeFactor: 2.5,
-          repetitions: 2,
-          status: "todo",
-        });
-      } 
-      else if (selectedStatus === "Mastered") {
-        subs = subs.filter((s: any) => s.problemId !== problemId);
-        subs.push({
-          id: `sub-${Math.random()}`,
-          userId: "usr-2",
-          problemId,
-          status: submissionStatus,
-          date: todayStr,
-          timeSpentMinutes: Number(timeSpent),
-          confidence,
-          takeaway,
-        });
-        revs = revs.filter((r: any) => r.problemId !== problemId);
-        revs.push({
-          id: `rev-${Math.random()}`,
-          userId: "usr-2",
-          problemId,
-          nextReviewDate: new Date(Date.now() + 15 * 24 * 3600 * 1000).toISOString(),
-          interval: 15,
-          easeFactor: 2.7,
-          repetitions: 4,
-          status: "todo",
-        });
-      }
-
-      // Save to localStorage
-      localStorage.setItem("mock_revisions", JSON.stringify(revs));
-      localStorage.setItem("mock_submissions", JSON.stringify(subs));
-
-      // Save takeaway notes to general notes database
-      if (takeaway.trim()) {
-        const rawNotes = JSON.parse(localStorage.getItem("mock_notes") || "{}");
-        rawNotes[`usr-2_${problemId}`] = takeaway;
-        localStorage.setItem("mock_notes", JSON.stringify(rawNotes));
-        
-        // Call backend API if possible
-        try {
-          await api.post(`/notes/${problemId}`, { note: takeaway });
-        } catch {
-          // ignore offline backend saves
-        }
-      }
+      // Save stats to unified UserProblemProgress database model
+      await api.put(`/progress/${problemId}`, {
+        status: selectedStatus,
+        timeTaken: timeSpent ? `${timeSpent} min` : "",
+        totalAttempts: attempts,
+        note: takeaway,
+      });
 
       // Stop Pomodoro if this problem is complete
-      if (pomodoroStore.activeProblemId === problemId && (selectedStatus === "Solved" || selectedStatus === "Revised Once" || selectedStatus === "Mastered")) {
+      if (
+        pomodoroStore.activeProblemId === problemId &&
+        (selectedStatus === "Solved" || selectedStatus === "Revised Once" || selectedStatus === "Mastered")
+      ) {
         pomodoroStore.resetTimer();
       }
 

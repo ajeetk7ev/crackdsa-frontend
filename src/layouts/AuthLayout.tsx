@@ -7,15 +7,15 @@ import { ToastContainer } from "@/components/common/Toast";
 
 export function AuthLayout() {
   const { theme, toggleTheme } = useThemeStore();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
   const navigate = useNavigate();
 
   // Redirect immediately if already signed in
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && user) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [user, isLoading, navigate]);
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">

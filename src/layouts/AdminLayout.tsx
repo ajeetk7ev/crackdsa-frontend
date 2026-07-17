@@ -9,7 +9,7 @@ import { ToastContainer } from "@/components/common/Toast";
 import { ShieldAlert } from "lucide-react";
 
 export function AdminLayout() {
-  const { isAuthenticated, isLoading, user, checkAuth } = useAuthStore();
+  const { isLoading, user, checkAuth } = useAuthStore();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -23,20 +23,20 @@ export function AdminLayout() {
   // Enforce auth and admin access restrictions
   useEffect(() => {
     if (!isLoading) {
-      if (!isAuthenticated) {
-        navigate("/auth/login", { replace: true });
-      } else if (user?.role !== "admin") {
+      if (!user) {
+        navigate("/login", { replace: true });
+      } else if (user.role?.toLowerCase() !== "admin") {
         useNotificationStore.getState().error("Access Denied: Administrative credentials required.");
         navigate("/dashboard", { replace: true });
       }
     }
-  }, [isAuthenticated, isLoading, user, navigate]);
+  }, [user, isLoading, navigate]);
 
   if (isLoading) {
     return <PageLoader message="Validating admin authorization credentials..." />;
   }
 
-  if (!isAuthenticated || user?.role !== "admin") return null;
+  if (!user || user.role?.toLowerCase() !== "admin") return null;
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">

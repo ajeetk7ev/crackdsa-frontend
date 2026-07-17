@@ -35,13 +35,13 @@ export function AppRoutes() {
       </Route>
 
       {/* 2. Authentication Flow Group */}
-      <Route path="/auth" element={<AuthLayout />}>
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<RegisterPage />} />
-        <Route path="forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="reset-password" element={<ResetPasswordPage />} />
-        <Route path="google/success" element={<GoogleSuccessPage />} />
-        <Route path="" element={<Navigate to="login" replace />} />
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/google/success" element={<GoogleSuccessPage />} />
+        <Route path="/auth/google/success" element={<GoogleSuccessPage />} />
       </Route>
 
       {/* 3. Protected Dashboard Space */}

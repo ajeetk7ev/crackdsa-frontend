@@ -41,9 +41,8 @@ export function ProfilePage() {
   // Core Data State
   const [problems, setProblems] = useState<Problem[]>([]);
   const [revisions, setRevisions] = useState<Revision[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [progressList, setProgressList] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
-  const [streaks, setStreaks] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Profile Customization States
@@ -64,31 +63,30 @@ export function ProfilePage() {
 
   const loadProfileData = async () => {
     try {
-      const probRes = await api.get("/problems");
-      const revRes = await api.get("/revisions");
+      const [probRes, revRes, progRes, colRes] = await Promise.all([
+        api.get("/problems?limit=1000"),
+        api.get("/revisions"),
+        api.get("/progress"),
+        api.get("/collections")
+      ]);
 
-      const rawSub = localStorage.getItem("mock_submissions") || "[]";
-      const rawCol = localStorage.getItem("mock_collections") || "[]";
-      const rawStreaks = localStorage.getItem("mock_streaks") || "[]";
+      setProblems(probRes.data.data.problems);
+      setRevisions(revRes.data.data);
+      setProgressList(progRes.data.data);
+      setCollections(colRes.data.data);
 
-      setProblems(probRes.data);
-      setRevisions(revRes.data);
-      setSubmissions(JSON.parse(rawSub));
-      setCollections(JSON.parse(rawCol));
-      setStreaks(JSON.parse(rawStreaks));
-
-      // Set user values
-      const name = localStorage.getItem("profile_name") || authUser?.name || "Alex Miller";
-      const username = localStorage.getItem("profile_username") || "alex_miller";
-      const bio = localStorage.getItem("profile_bio") || "SDE Prep | Targeting Mid-Level placement boards";
-      const lcUser = localStorage.getItem("profile_leetcode_username") || "alex_leetcode";
+      const firstname = authUser?.firstname || "";
+      const lastname = authUser?.lastname || "";
+      const name = firstname || lastname ? `${firstname} ${lastname}`.trim() : "Alex Miller";
+      const username = authUser?.username || "alex_miller";
+      const bio = authUser?.bio || "SDE Prep | Targeting Mid-Level placement boards";
+      const lcUser = authUser?.leetcodeUsername || "";
 
       setProfileName(name);
       setProfileUsername(username);
       setProfileBio(bio);
       setLeetcodeUsername(lcUser);
 
-      // Bind edits
       setEditName(name);
       setEditUsername(username);
       setEditBio(bio);
@@ -102,36 +100,46 @@ export function ProfilePage() {
 
   useEffect(() => {
     loadProfileData();
-  }, []);
+  }, [authUser]);
 
   // 1. Save Profile Details
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!editName.trim() || !editUsername.trim()) {
       addToast("Name and Username are required.", "warning");
       return;
     }
 
-    localStorage.setItem("profile_name", editName);
-    localStorage.setItem("profile_username", editUsername);
-    localStorage.setItem("profile_bio", editBio);
+    try {
+      await updateProfile({
+        firstname: editName.split(" ")[0] || "",
+        lastname: editName.split(" ").slice(1).join(" ") || "",
+        username: editUsername,
+        bio: editBio
+      });
 
-    setProfileName(editName);
-    setProfileUsername(editUsername);
-    setProfileBio(editBio);
+      setProfileName(editName);
+      setProfileUsername(editUsername);
+      setProfileBio(editBio);
 
-    // Sync auth store username
-    updateProfile(editName);
-
-    addToast("Profile details updated successfully.", "success");
-    setIsEditOpen(false);
+      addToast("Profile details updated successfully.", "success");
+      setIsEditOpen(false);
+    } catch {
+      addToast("Failed to update profile settings.", "error");
+    }
   };
 
   // 2. Save Leetcode username
-  const handleSaveLeetcodeUser = () => {
-    localStorage.setItem("profile_leetcode_username", editLeetcodeUser);
-    setLeetcodeUsername(editLeetcodeUser);
-    addToast(`LeetCode profile connected: ${editLeetcodeUser}`, "success");
-    setIsLeetcodeOpen(false);
+  const handleSaveLeetcodeUser = async () => {
+    try {
+      await updateProfile({
+        leetcodeUsername: editLeetcodeUser
+      });
+      setLeetcodeUsername(editLeetcodeUser);
+      addToast(`LeetCode profile connected: ${editLeetcodeUser}`, "success");
+      setIsLeetcodeOpen(false);
+    } catch {
+      addToast("Failed to save Leetcode username.", "error");
+    }
   };
 
   // 3. Copy share link
@@ -143,10 +151,10 @@ export function ProfilePage() {
 
   // Stats Calculations
   const solvedCount = useMemo(() => {
-    return problems.filter((p) => {
-      return submissions.some((s) => s.problemId === p.id && s.status === "Correct");
-    }).length;
-  }, [problems, submissions]);
+    return progressList.filter(
+      (p) => ["Solved", "Revised Once", "Mastered"].includes(p.status)
+    ).length;
+  }, [progressList]);
 
   const progressPercent = problems.length > 0 ? Math.ceil((solvedCount / problems.length) * 100) : 0;
   const revisionsCount = useMemo(() => {
@@ -154,44 +162,18 @@ export function ProfilePage() {
   }, [revisions]);
 
   const masteredCount = useMemo(() => {
-    return revisions.filter((r) => r.status === "todo" && r.interval >= 15).length;
-  }, [revisions]);
+    return progressList.filter((p) => p.status === "Mastered").length;
+  }, [progressList]);
 
-  // Current Streak Flame Size
-  const currentStreakVal = useMemo(() => {
-    if (streaks.length === 0) return 0;
-    const sorted = [...new Set(streaks)].sort(
-      (a, b) => new Date(b).getTime() - new Date(a).getTime()
-    );
-    const todayStr = new Date().toISOString().split("T")[0];
-    const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-
-    if (sorted[0] !== todayStr && sorted[0] !== yesterdayStr) return 0;
-
-    let count = 0;
-    let check = new Date();
-    while (true) {
-      const checkStr = check.toISOString().split("T")[0];
-      if (sorted.includes(checkStr)) {
-        count++;
-        check.setDate(check.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    return count;
-  }, [streaks]);
-
-  // Longest Streak simulation
-  const longestStreakVal = useMemo(() => {
-    return Math.max(currentStreakVal, 18);
-  }, [currentStreakVal]);
+  const currentStreakVal = authUser?.streak?.current || 0;
+  const longestStreakVal = authUser?.streak?.longest || 0;
 
   // Interview Readiness Score calculations
   const readinessPercent = useMemo(() => {
     if (solvedCount === 0) return 10;
-    return Math.min(96, Math.ceil(20 + (solvedCount / problems.length) * 70 + (streaks.length * 0.5)));
-  }, [solvedCount, problems, streaks]);
+    const streakLength = authUser?.solvedDates?.length || 0;
+    return Math.min(96, Math.ceil(20 + (solvedCount / (problems.length || 1)) * 70 + (streakLength * 0.5)));
+  }, [solvedCount, problems, authUser]);
 
   const getPercentileRank = (percent: number) => {
     if (percent > 90) return "Top 2%";

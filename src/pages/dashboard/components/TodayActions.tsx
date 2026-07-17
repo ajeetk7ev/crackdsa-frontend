@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { api } from "@/lib/axios";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -200,35 +201,49 @@ export function LeetcodeProfileCard() {
 }
 
 // 3. Redesigned Today's Goal Card
-export function TodayGoalCard({ problems, submissions }: { problems: ProblemItem[]; submissions: any[] }) {
+export function TodayGoalCard({ problems, solvedProblemIds }: { problems: ProblemItem[]; solvedProblemIds: string[] }) {
   const [goalIds, setGoalIds] = useState<string[]>([]);
   const [isSetOpen, setIsSetOpen] = useState(false);
   const [isViewAllOpen, setIsViewAllOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const addToast = useNotificationStore((state: any) => state.addToast);
 
-  // Load goals from local storage
-  useEffect(() => {
-    const saved = localStorage.getItem("today_goal_problems");
-    if (saved) {
-      setGoalIds(JSON.parse(saved));
+  // Load goals from backend
+  const loadGoals = async () => {
+    try {
+      const res = await api.get("/goals/today");
+      setGoalIds(res.data.data.problemIds);
+    } catch {
+      // Keep list empty if fetch fails
     }
-  }, []);
-
-  const saveGoals = (ids: string[]) => {
-    localStorage.setItem("today_goal_problems", JSON.stringify(ids));
-    setGoalIds(ids);
   };
 
-  const clearGoals = () => {
-    localStorage.removeItem("today_goal_problems");
-    setGoalIds([]);
-    addToast("Today's goals cleared.", "info");
+  useEffect(() => {
+    loadGoals();
+  }, []);
+
+  const saveGoals = async (ids: string[]) => {
+    try {
+      const res = await api.post("/goals/today", { problems: ids });
+      setGoalIds(res.data.data.problemIds);
+    } catch {
+      addToast("Failed to save today's goals.", "error");
+    }
+  };
+
+  const clearGoals = async () => {
+    try {
+      await api.delete("/goals/today");
+      setGoalIds([]);
+      addToast("Today's goals cleared.", "info");
+    } catch {
+      addToast("Failed to clear today's goals.", "error");
+    }
   };
 
   // Determine if a problem ID is solved
   const isProblemSolved = (probId: string) => {
-    return submissions.some((s) => s.problemId === probId && s.status === "Correct");
+    return solvedProblemIds.includes(probId);
   };
 
   // Resolve problem metadata

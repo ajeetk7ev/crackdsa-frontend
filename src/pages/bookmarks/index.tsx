@@ -40,11 +40,7 @@ interface RevisionItem {
 }
 
 export function BookmarksPage() {
-  const [problems, setProblems] = useState<Problem[]>([]);
-  const [revisions, setRevisions] = useState<RevisionItem[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [progressList, setProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Filter state
@@ -62,16 +58,9 @@ export function BookmarksPage() {
 
   const loadData = async () => {
     try {
-      const [probRes, revRes] = await Promise.all([
-        api.get("/problems"),
-        api.get("/revisions"),
-      ]);
-      setProblems(probRes.data);
-      setRevisions(revRes.data);
-
-      setSubmissions(JSON.parse(localStorage.getItem("mock_submissions") || "[]"));
-      setBookmarks(JSON.parse(localStorage.getItem("crackdsa_bookmarks") || "[]"));
-      setNotes(JSON.parse(localStorage.getItem("mock_notes") || "{}"));
+      setLoading(true);
+      const progRes = await api.get("/progress");
+      setProgressList(progRes.data.data);
     } catch {
       addToast("Failed to fetch bookmarks workspace progress records.", "error");
     } finally {
@@ -83,56 +72,55 @@ export function BookmarksPage() {
     loadData();
   }, []);
 
-  const handleBookmarkToggle = (probId: string) => {
-    const updated = bookmarks.filter((id) => id !== probId);
-    setBookmarks(updated);
-    localStorage.setItem("crackdsa_bookmarks", JSON.stringify(updated));
-    addToast("Removed from bookmarks.", "info");
+  const handleBookmarkToggle = async (probId: string) => {
+    try {
+      await api.put(`/progress/${probId}`, { isBookmarked: false });
+      addToast("Removed from bookmarks.", "info");
+      loadData();
+    } catch {
+      addToast("Failed to toggle bookmark.", "error");
+    }
   };
 
   const getProblemStatus = (probId: string) => {
-    const revision = revisions.find((r) => r.problemId === probId);
-    const correctSub = submissions.filter((s) => s.problemId === probId && s.status === "Correct");
-    const hasFailed = submissions.some((s) => s.problemId === probId && s.status !== "Correct");
+    const prog = progressList.find((p) => p.problemId === probId);
+    if (!prog) {
+      return {
+        text: "Not Started",
+        color: "text-muted-foreground",
+        icon: <Circle className="size-4 text-muted-foreground/60 mx-auto" />
+      };
+    }
 
-    if (revision) {
-      if (revision.interval >= 15) {
-        return {
-          text: "Mastered",
-          color: "text-purple-600 dark:text-purple-400",
-          icon: <Award className="size-4 text-purple-500 mx-auto" />
-        };
-      }
-      if (revision.status === "todo") {
-        const isDue = new Date(revision.nextReviewDate).getTime() <= Date.now();
-        return isDue 
-          ? {
-              text: "Needs Revision",
-              color: "text-amber-600 dark:text-amber-400",
-              icon: <AlertCircle className="size-4 text-amber-500 mx-auto" />
-            }
-          : {
-              text: "Revised Once",
-              color: "text-blue-600 dark:text-blue-400",
-              icon: <RefreshCw className="size-4 text-blue-500 mx-auto" />
-            };
-      }
+    if (prog.status === "Mastered") {
+      return {
+        text: "Mastered",
+        color: "text-purple-600 dark:text-purple-400",
+        icon: <Award className="size-4 text-purple-500 mx-auto" />
+      };
+    }
+    if (prog.status === "Needs Revision") {
+      return {
+        text: "Needs Revision",
+        color: "text-amber-600 dark:text-amber-400",
+        icon: <AlertCircle className="size-4 text-amber-500 mx-auto" />
+      };
+    }
+    if (prog.status === "Revised Once") {
       return {
         text: "Revised Once",
         color: "text-blue-600 dark:text-blue-400",
         icon: <RefreshCw className="size-4 text-blue-500 mx-auto" />
       };
     }
-
-    if (correctSub.length > 0) {
+    if (prog.status === "Solved") {
       return {
         text: "Solved",
         color: "text-emerald-600 dark:text-emerald-400",
         icon: <CheckCircle2 className="size-4 text-emerald-500 mx-auto" />
       };
     }
-
-    if (hasFailed) {
+    if (prog.status === "Attempted") {
       return {
         text: "Attempted",
         color: "text-amber-500",
@@ -149,24 +137,23 @@ export function BookmarksPage() {
 
   const handleOpenNoteModal = (probId: string) => {
     setActiveNoteProblemId(probId);
-    const key = `usr-2_${probId}`;
-    setActiveNoteText(notes[key] || "");
+    const prog = progressList.find((p) => p.problemId === probId);
+    setActiveNoteText(prog?.note || "");
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
     if (!activeNoteProblemId) return;
     setSavingNote(true);
-
-    const updatedNotes = {
-      ...notes,
-      [`usr-2_${activeNoteProblemId}`]: activeNoteText,
-    };
-
-    setNotes(updatedNotes);
-    localStorage.setItem("mock_notes", JSON.stringify(updatedNotes));
-    addToast("Notes saved successfully.", "success");
-    setSavingNote(false);
-    setActiveNoteProblemId(null);
+    try {
+      await api.post(`/notes/${activeNoteProblemId}`, { note: activeNoteText });
+      addToast("Notes saved successfully.", "success");
+      setActiveNoteProblemId(null);
+      loadData();
+    } catch {
+      addToast("Failed to save note.", "error");
+    } finally {
+      setSavingNote(false);
+    }
   };
 
   const handleOpenStatusModal = (id: string, title: string) => {
@@ -174,19 +161,23 @@ export function BookmarksPage() {
   };
 
   const processedProblems = useMemo(() => {
-    let result = problems.filter((p) => bookmarks.includes(p.id));
+    return progressList
+      .filter((p) => p.isBookmarked && p.problem)
+      .map((p) => p.problem)
+      .filter((p) => {
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          const matches = p.title.toLowerCase().includes(q) || p.topic.toLowerCase().includes(q);
+          if (!matches) return false;
+        }
 
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((p) => p.title.toLowerCase().includes(q) || p.topic.toLowerCase().includes(q));
-    }
+        if (filterDifficulty !== "All" && p.difficulty !== filterDifficulty) {
+          return false;
+        }
 
-    if (filterDifficulty !== "All") {
-      result = result.filter((p) => p.difficulty === filterDifficulty);
-    }
-
-    return result;
-  }, [problems, bookmarks, searchQuery, filterDifficulty, revisions, submissions]);
+        return true;
+      });
+  }, [progressList, searchQuery, filterDifficulty]);
 
   if (loading) {
     return (
@@ -285,15 +276,15 @@ export function BookmarksPage() {
               <tbody className="divide-y divide-border text-sm">
                 {processedProblems.map((prob) => {
                   const stat = getProblemStatus(prob.id);
-                  const noteKey = `usr-2_${prob.id}`;
-                  const hasNote = notes[noteKey] && notes[noteKey].trim().length > 0;
-                  const rev = revisions.find((r) => r.problemId === prob.id);
+                  const prog = progressList.find((p) => p.problemId === prob.id);
+                  const hasNote = prog && prog.note && prog.note.trim().length > 0;
+                  
                   let reviewDateStr = "-";
-                  if (rev) {
-                    if (rev.status === "completed") {
+                  if (prog && prog.srs && prog.srs.nextReviewDate) {
+                    if (prog.srs.status === "completed") {
                       reviewDateStr = "Done";
                     } else {
-                      const d = new Date(rev.nextReviewDate);
+                      const d = new Date(prog.srs.nextReviewDate);
                       reviewDateStr = d.getTime() <= Date.now() ? "Due Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
                     }
                   }

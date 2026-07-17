@@ -68,6 +68,8 @@ interface AuthState {
   checkAuth: () => Promise<void>;
 
   setUser: (user: User) => void;
+
+  updateProfile: (data: Partial<User> | string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -174,5 +176,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   // ---------- Set User (used by Google OAuth success page) ----------
   setUser: (user) => {
     set({ user, isAuthenticated: true, isLoading: false });
+  },
+
+  updateProfile: async (data) => {
+    let payload: any = {};
+    if (typeof data === "string") {
+      const parts = data.trim().split(" ");
+      payload.firstname = parts[0] || "";
+      payload.lastname = parts.slice(1).join(" ") || "";
+    } else {
+      payload = data;
+    }
+
+    const response = await api.put("/auth/profile", payload);
+    const user = response.data.data.user;
+    set({ user });
   },
 }));

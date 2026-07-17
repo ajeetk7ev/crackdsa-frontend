@@ -204,12 +204,12 @@ export function LandingPage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-wrap gap-4 items-center pt-2">
-            <Link to="/auth/register">
+            <Link to="/signup">
               <Button size="lg" className="h-11 px-7 cursor-pointer shadow-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg text-sm flex items-center gap-1.5 transition-transform hover:-translate-y-0.5">
                 Start Mastering DSA <ArrowRight className="size-4" />
               </Button>
             </Link>
-            <Link to="/auth/login">
+            <Link to="/login">
               <Button variant="outline" size="lg" className="h-11 px-7 cursor-pointer hover:bg-muted/50 rounded-lg text-sm text-foreground">
                 Browse Problems
               </Button>
@@ -1299,12 +1299,12 @@ export function LandingPage() {
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center relative z-10 pt-2">
-            <Link to="/auth/register">
+            <Link to="/signup">
               <Button size="lg" className="h-11 px-8 cursor-pointer shadow-md bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-lg text-sm flex items-center gap-1.5">
                 Start Mastering DSA
               </Button>
             </Link>
-            <Link to="/auth/login">
+            <Link to="/login">
               <Button variant="outline" size="lg" className="h-11 px-8 cursor-pointer hover:bg-muted/50 rounded-lg text-sm text-foreground">
                 Sign In
               </Button>

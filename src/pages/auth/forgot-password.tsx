@@ -75,7 +75,7 @@ export function ForgotPasswordPage() {
       )}
 
       <p className="text-xs text-center text-muted-foreground">
-        <Link to="/auth/login" className="inline-flex items-center gap-1 text-foreground hover:underline font-semibold">
+        <Link to="/login" className="inline-flex items-center gap-1 text-foreground hover:underline font-semibold">
           <ArrowLeft className="size-3" /> Back to Sign In
         </Link>
       </p>

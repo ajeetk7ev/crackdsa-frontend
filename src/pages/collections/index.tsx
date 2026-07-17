@@ -57,10 +57,7 @@ export function CollectionsPage() {
   // Core Data States
   const [problems, setProblems] = useState<Problem[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [revisions, setRevisions] = useState<RevisionItem[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [progressList, setProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Active workspace states
@@ -91,20 +88,15 @@ export function CollectionsPage() {
   // Load Database values
   const loadCollectionsData = async () => {
     try {
-      const probRes = await api.get("/problems");
-      const revRes = await api.get("/revisions");
-      
-      const rawCol = localStorage.getItem("mock_collections") || "[]";
-      const rawSub = localStorage.getItem("mock_submissions") || "[]";
-      const rawBookmarks = localStorage.getItem("crackdsa_bookmarks") || "[]";
-      const rawNotes = localStorage.getItem("mock_notes") || "{}";
+      const [probRes, colRes, progRes] = await Promise.all([
+        api.get("/problems?limit=1000"),
+        api.get("/collections"),
+        api.get("/progress")
+      ]);
 
-      setProblems(probRes.data);
-      setCollections(JSON.parse(rawCol));
-      setRevisions(revRes.data);
-      setSubmissions(JSON.parse(rawSub));
-      setBookmarks(JSON.parse(rawBookmarks));
-      setNotes(JSON.parse(rawNotes));
+      setProblems(probRes.data.data.problems);
+      setCollections(colRes.data.data);
+      setProgressList(progRes.data.data);
     } catch {
       addToast("Failed to fetch collections records.", "error");
     } finally {
@@ -122,63 +114,66 @@ export function CollectionsPage() {
 
   // Check if problem is solved
   const isProblemSolved = (probId: string) => {
-    return submissions.some((s) => s.problemId === probId && s.status === "Correct");
+    return progressList.some(
+      (p) => p.problemId === probId && ["Solved", "Revised Once", "Mastered"].includes(p.status)
+    );
   };
 
-
+  const isProblemBookmarked = (probId: string) => {
+    return progressList.find((p) => p.problemId === probId)?.isBookmarked || false;
+  };
 
   // 1. Create Playlist Collection
-  const handleCreateCollection = () => {
+  const handleCreateCollection = async () => {
     if (!newColName.trim()) {
       addToast("Collection name is required.", "warning");
       return;
     }
 
-    const newCol: Collection = {
-      id: `col-${Math.random().toString(36).substring(2, 9)}`,
-      name: newColName,
-      description: newColDesc,
-      problemIds: [],
-      isPublic: newColPublic,
-    };
+    try {
+      await api.post("/collections", {
+        name: newColName,
+        description: newColDesc,
+        isPublic: newColPublic,
+      });
 
-    const updated = [...collections, newCol];
-    setCollections(updated);
-    localStorage.setItem("mock_collections", JSON.stringify(updated));
-
-    addToast(`Playlist "${newColName}" created successfully!`, "success");
-    setNewColName("");
-    setNewColDesc("");
-    setNewColPublic(false);
-    setIsCreateOpen(false);
+      addToast(`Playlist "${newColName}" created successfully!`, "success");
+      setNewColName("");
+      setNewColDesc("");
+      setNewColPublic(false);
+      setIsCreateOpen(false);
+      loadCollectionsData();
+    } catch {
+      addToast("Failed to create collection.", "error");
+    }
   };
 
   // 2. Rename Collection
-  const handleRenameCollection = () => {
+  const handleRenameCollection = async () => {
     if (!renameName.trim() || !activeCollectionId) return;
 
-    const updated = collections.map((c) => {
-      if (c.id === activeCollectionId) {
-        return { ...c, name: renameName };
-      }
-      return c;
-    });
-
-    setCollections(updated);
-    localStorage.setItem("mock_collections", JSON.stringify(updated));
-    addToast("Collection renamed successfully.", "success");
-    setIsRenameOpen(false);
+    try {
+      await api.put(`/collections/${activeCollectionId}`, { name: renameName });
+      addToast("Collection renamed successfully.", "success");
+      setIsRenameOpen(false);
+      loadCollectionsData();
+    } catch {
+      addToast("Failed to rename collection.", "error");
+    }
   };
 
   // 3. Delete Collection
-  const handleDeleteCollection = () => {
+  const handleDeleteCollection = async () => {
     if (!activeCollectionId) return;
 
-    const updated = collections.filter((c) => c.id !== activeCollectionId);
-    setCollections(updated);
-    localStorage.setItem("mock_collections", JSON.stringify(updated));
-    addToast("Collection deleted.", "info");
-    setActiveCollectionId(null);
+    try {
+      await api.delete(`/collections/${activeCollectionId}`);
+      addToast("Collection deleted.", "info");
+      setActiveCollectionId(null);
+      loadCollectionsData();
+    } catch {
+      addToast("Failed to delete collection.", "error");
+    }
   };
 
   // 4. Open Add problems panel
@@ -199,37 +194,31 @@ export function CollectionsPage() {
   };
 
   // Save selection inside playlist
-  const handleSaveProblemsToCollection = () => {
+  const handleSaveProblemsToCollection = async () => {
     if (!activeCollectionId) return;
 
-    const updated = collections.map((c) => {
-      if (c.id === activeCollectionId) {
-        return { ...c, problemIds: tempCheckedIds };
-      }
-      return c;
-    });
-
-    setCollections(updated);
-    localStorage.setItem("mock_collections", JSON.stringify(updated));
-    addToast("Playlist questions updated.", "success");
-    setIsAddProblemsOpen(false);
+    try {
+      await api.put(`/collections/${activeCollectionId}`, { problems: tempCheckedIds });
+      addToast("Playlist questions updated.", "success");
+      setIsAddProblemsOpen(false);
+      loadCollectionsData();
+    } catch {
+      addToast("Failed to update playlist questions.", "error");
+    }
   };
 
   // Inline remove action
-  const handleRemoveProblemFromCollection = (probId: string) => {
+  const handleRemoveProblemFromCollection = async (probId: string) => {
     if (!activeCollectionId || !activeCollection) return;
 
     const updatedIds = activeCollection.problemIds.filter((id) => id !== probId);
-    const updated = collections.map((c) => {
-      if (c.id === activeCollectionId) {
-        return { ...c, problemIds: updatedIds };
-      }
-      return c;
-    });
-
-    setCollections(updated);
-    localStorage.setItem("mock_collections", JSON.stringify(updated));
-    addToast("Problem removed from this playlist.", "info");
+    try {
+      await api.put(`/collections/${activeCollectionId}`, { problems: updatedIds });
+      addToast("Problem removed from this playlist.", "info");
+      loadCollectionsData();
+    } catch {
+      addToast("Failed to remove problem.", "error");
+    }
   };
 
   // Resolve problems list for active playlist
@@ -256,7 +245,7 @@ export function CollectionsPage() {
     });
 
     return { total, solved, remaining, percent, difficulties };
-  }, [activePlaylistProblems, submissions]);
+  }, [activePlaylistProblems, progressList]);
 
   // Filtered problems list inside dialog
   const filteredProblemsForAdd = useMemo(() => {
@@ -268,60 +257,52 @@ export function CollectionsPage() {
   }, [problems, addSearchQuery]);
 
   // Bookmark Toggle
-  const handleBookmarkToggle = (probId: string) => {
-    const bmarks = [...bookmarks];
-    if (bmarks.includes(probId)) {
-      const updated = bmarks.filter((id) => id !== probId);
-      localStorage.setItem("crackdsa_bookmarks", JSON.stringify(updated));
-      setBookmarks(updated);
-      addToast("Bookmark removed.", "info");
-    } else {
-      const updated = [...bmarks, probId];
-      localStorage.setItem("crackdsa_bookmarks", JSON.stringify(updated));
-      setBookmarks(updated);
-      addToast("Bookmark added.", "success");
+  const handleBookmarkToggle = async (probId: string) => {
+    const currentlyBookmarked = isProblemBookmarked(probId);
+    try {
+      await api.put(`/progress/${probId}`, { isBookmarked: !currentlyBookmarked });
+      addToast(currentlyBookmarked ? "Bookmark removed." : "Bookmark added.", currentlyBookmarked ? "info" : "success");
+      loadCollectionsData();
+    } catch {
+      addToast("Failed to toggle bookmark.", "error");
     }
   };
 
   // Problem Status Resolver
   const getProblemStatus = (probId: string) => {
-    const revision = revisions.find((r) => r.problemId === probId);
-    const correctSub = submissions.filter((s) => s.problemId === probId && s.status === "Correct");
-    const hasFailed = submissions.some((s) => s.problemId === probId && s.status !== "Correct");
+    const prog = progressList.find((p) => p.problemId === probId);
+    if (!prog) {
+      return {
+        text: "Not Started",
+        icon: <Circle className="size-4 text-muted-foreground/60 mx-auto" />
+      };
+    }
 
-    if (revision) {
-      if (revision.interval >= 15) {
-        return {
-          text: "Mastered",
-          icon: <Award className="size-4 text-purple-500 mx-auto" />
-        };
-      }
-      if (revision.status === "todo") {
-        const isDue = new Date(revision.nextReviewDate).getTime() <= Date.now();
-        return isDue 
-          ? {
-              text: "Needs Revision",
-              icon: <AlertCircle className="size-4 text-amber-500 mx-auto" />
-            }
-          : {
-              text: "Revised Once",
-              icon: <RefreshCw className="size-4 text-blue-500 mx-auto" />
-            };
-      }
+    if (prog.status === "Mastered") {
+      return {
+        text: "Mastered",
+        icon: <Award className="size-4 text-purple-500 mx-auto" />
+      };
+    }
+    if (prog.status === "Needs Revision") {
+      return {
+        text: "Needs Revision",
+        icon: <AlertCircle className="size-4 text-amber-500 mx-auto" />
+      };
+    }
+    if (prog.status === "Revised Once") {
       return {
         text: "Revised Once",
         icon: <RefreshCw className="size-4 text-blue-500 mx-auto" />
       };
     }
-
-    if (correctSub.length > 0) {
+    if (prog.status === "Solved") {
       return {
         text: "Solved",
         icon: <CheckCircle2 className="size-4 text-emerald-500 mx-auto" />
       };
     }
-
-    if (hasFailed) {
+    if (prog.status === "Attempted") {
       return {
         text: "Attempted",
         icon: <AlertCircle className="size-4 text-amber-400 mx-auto" />
@@ -337,8 +318,8 @@ export function CollectionsPage() {
   // Open Notes Dialog
   const handleOpenNoteModal = (probId: string) => {
     setActiveNoteProblemId(probId);
-    const noteKey = `usr-2_${probId}`;
-    setActiveNoteText(notes[noteKey] || "");
+    const prog = progressList.find((p) => p.problemId === probId);
+    setActiveNoteText(prog?.note || "");
   };
 
   // Inline Note Editor Save
@@ -347,12 +328,9 @@ export function CollectionsPage() {
     setSavingNote(true);
     try {
       await api.post(`/notes/${activeNoteProblemId}`, { note: activeNoteText });
-      const rawNotes = JSON.parse(localStorage.getItem("mock_notes") || "{}");
-      rawNotes[`usr-2_${activeNoteProblemId}`] = activeNoteText;
-      localStorage.setItem("mock_notes", JSON.stringify(rawNotes));
-      setNotes(rawNotes);
       addToast("Recall note saved successfully.", "success");
       setActiveNoteProblemId(null);
+      loadCollectionsData();
     } catch {
       addToast("Failed to save note.", "error");
     } finally {
@@ -517,18 +495,17 @@ export function CollectionsPage() {
                   ) : (
                     activePlaylistProblems.map((prob) => {
                       const stat = getProblemStatus(prob.id);
-                      const isBookmarked = bookmarks.includes(prob.id);
-                      const noteKey = `usr-2_${prob.id}`;
-                      const hasNote = notes[noteKey] && notes[noteKey].trim().length > 0;
+                      const isBook = isProblemBookmarked(prob.id);
+                      const prog = progressList.find((p) => p.problemId === prob.id);
+                      const hasNote = prog && prog.note && prog.note.trim().length > 0;
 
                       // Next review dates
-                      const rev = revisions.find((r) => r.problemId === prob.id);
                       let reviewDateStr = "-";
-                      if (rev) {
-                        if (rev.status === "completed") {
+                      if (prog && prog.srs && prog.srs.nextReviewDate) {
+                        if (prog.srs.status === "completed") {
                           reviewDateStr = "Done";
                         } else {
-                          const d = new Date(rev.nextReviewDate);
+                          const d = new Date(prog.srs.nextReviewDate);
                           reviewDateStr = d.getTime() <= Date.now() ? "Due Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
                         }
                       }
@@ -605,7 +582,7 @@ export function CollectionsPage() {
                                 className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer"
                                 title="Bookmark Problem"
                               >
-                                <Bookmark className={cn("size-4", isBookmarked ? "text-amber-500 fill-amber-500 border-amber-500" : "")} />
+                                <Bookmark className={cn("size-4", isBook ? "text-amber-500 fill-amber-500 border-amber-500" : "")} />
                               </button>
 
                               {/* Edit recall notes */}
@@ -624,9 +601,9 @@ export function CollectionsPage() {
 
                               {/* Detail workspace outlink */}
                               <Link
-                                to={`/problems/${prob.id}`}
-                                className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer inline-flex items-center"
-                                title="Open Workspace"
+                                  to={`/problems/${prob.id}`}
+                                  className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer inline-flex items-center"
+                                  title="Open Workspace"
                               >
                                 <Eye className="size-4" />
                               </Link>

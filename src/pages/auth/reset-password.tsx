@@ -39,7 +39,7 @@ export function ResetPasswordPage() {
       await api.post("/auth/reset-password", { password });
       addToast("Password updated successfully! Redirecting to login...", "success");
       setTimeout(() => {
-        navigate("/auth/login");
+        navigate("/login");
       }, 1500);
     } catch {
       addToast("Reset token is invalid or has expired.", "error");
@@ -103,7 +103,7 @@ export function ResetPasswordPage() {
       </form>
 
       <p className="text-xs text-center text-muted-foreground">
-        <Link to="/auth/login" className="inline-flex items-center gap-1 text-foreground hover:underline font-semibold">
+        <Link to="/login" className="inline-flex items-center gap-1 text-foreground hover:underline font-semibold">
           <ArrowLeft className="size-3" /> Cancel
         </Link>
       </p>

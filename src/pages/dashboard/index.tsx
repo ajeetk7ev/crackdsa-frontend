@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
+import { useAuthStore } from "@/stores/auth.store";
 import { Typography } from "@/components/ui/typography";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,10 +34,11 @@ interface Revision {
 }
 
 export function DashboardPage() {
+  const user = useAuthStore((state) => state.user);
+
   const [problems, setProblems] = useState<Problem[]>([]);
   const [revisions, setRevisions] = useState<Revision[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [streaks, setStreaks] = useState<string[]>([]);
+  const [progressList, setProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Review Modal State
@@ -49,17 +51,15 @@ export function DashboardPage() {
   // Load Dashboard Data
   const loadDashboardData = async () => {
     try {
-      const probRes = await api.get("/problems");
-      const revRes = await api.get("/revisions");
+      const [probRes, revRes, progRes] = await Promise.all([
+        api.get("/problems?limit=1000"),
+        api.get("/revisions"),
+        api.get("/progress")
+      ]);
       
-      // Load database variables from localStorage for dashboard components
-      const rawSub = localStorage.getItem("mock_submissions") || "[]";
-      const rawStreaks = localStorage.getItem("mock_streaks") || "[]";
-
-      setProblems(probRes.data);
-      setRevisions(revRes.data);
-      setSubmissions(JSON.parse(rawSub));
-      setStreaks(JSON.parse(rawStreaks));
+      setProblems(probRes.data.data.problems);
+      setRevisions(revRes.data.data);
+      setProgressList(progRes.data.data);
     } catch (err) {
       addToast("Failed to fetch dashboard updates from database.", "error");
     } finally {
@@ -79,7 +79,7 @@ export function DashboardPage() {
     // Load existing note if present
     try {
       const res = await api.get(`/notes/${probId}`);
-      setReviewNote(res.data.note || "");
+      setReviewNote(res.data.data.note || "");
     } catch {
       setReviewNote("");
     }
@@ -109,25 +109,6 @@ export function DashboardPage() {
       
       // 2. Save notes
       await api.post(`/notes/${selectedProblemId}`, { note: reviewNote });
-
-      // 3. Log a correct solve attempt in submissions
-      const subs = JSON.parse(localStorage.getItem("mock_submissions") || "[]");
-      const newSub = {
-        id: Math.random().toString(36).substring(2, 9),
-        userId: associatedRev.userId,
-        problemId: selectedProblemId,
-        status: "Correct",
-        date: new Date().toISOString(),
-      };
-      localStorage.setItem("mock_submissions", JSON.stringify([...subs, newSub]));
-
-      // 4. Update streaks dates
-      const streakLogs = JSON.parse(localStorage.getItem("mock_streaks") || "[]");
-      const dateStr = new Date().toISOString().split("T")[0];
-      if (!streakLogs.includes(dateStr)) {
-        streakLogs.push(dateStr);
-        localStorage.setItem("mock_streaks", JSON.stringify(streakLogs));
-      }
 
       addToast("SM2 Interval database logs updated successfully!", "success");
       handleCloseReview();
@@ -197,15 +178,23 @@ export function DashboardPage() {
     );
   }
 
+  const dueRevisions = revisions.filter(
+    (r) => new Date(r.nextReviewDate).getTime() <= Date.now()
+  );
+
+  const solvedProblemIds = progressList
+    .filter((p) => ["Solved", "Revised Once", "Mastered"].includes(p.status))
+    .map((p) => p.problemId);
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       
       {/* SECTION 1: WELCOME HEADER */}
       <WelcomeHeader
-        dueCount={revisions.length}
+        dueCount={dueRevisions.length}
         onStartRevisions={() => {
-          if (revisions.length > 0) {
-            handleReviewSelect(revisions[0].problemId);
+          if (dueRevisions.length > 0) {
+            handleReviewSelect(dueRevisions[0].problemId);
           } else {
             addToast("Your revision queue is clean! Try solving a new problem from Problems directory.", "info");
           }
@@ -219,12 +208,12 @@ export function DashboardPage() {
         </Typography>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <TodayRevisionCard
-            revisions={revisions}
+            revisions={dueRevisions}
             problems={problems}
             onReviewSelect={handleReviewSelect}
           />
           <LeetcodeProfileCard />
-          <TodayGoalCard problems={problems} submissions={submissions} />
+          <TodayGoalCard problems={problems} solvedProblemIds={solvedProblemIds} />
           <Pomodoro />
         </div>
       </div>
@@ -235,9 +224,9 @@ export function DashboardPage() {
           Consistency Analytics
         </Typography>
         <LearningProgress
-          solvedCount={submissions.filter((s) => s.status === "Correct").length}
+          solvedCount={solvedProblemIds.length}
           totalCount={problems.length}
-          streaks={streaks}
+          streaks={user?.solvedDates || []}
         />
       </div>
 

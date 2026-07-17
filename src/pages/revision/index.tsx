@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
+import { useAuthStore } from "@/stores/auth.store";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { TableSkeleton } from "@/components/ui/loader";
@@ -41,8 +42,7 @@ export function RevisionPage() {
   // States
   const [problems, setProblems] = useState<Problem[]>([]);
   const [revisions, setRevisions] = useState<RevisionItem[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [progressList, setProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [filterMode, setFilterMode] = useState<FilterMode>("Due");
@@ -50,16 +50,15 @@ export function RevisionPage() {
   // Load Data
   const loadRevisionData = async () => {
     try {
-      const probRes = await api.get("/problems");
-      const revRes = await api.get("/revisions");
+      const [probRes, revRes, progRes] = await Promise.all([
+        api.get("/problems?limit=1000"),
+        api.get("/revisions"),
+        api.get("/progress")
+      ]);
       
-      const rawSub = localStorage.getItem("mock_submissions") || "[]";
-      const rawBookmarks = localStorage.getItem("crackdsa_bookmarks") || "[]";
-
-      setProblems(probRes.data);
-      setRevisions(revRes.data);
-      setSubmissions(JSON.parse(rawSub));
-      setBookmarks(JSON.parse(rawBookmarks));
+      setProblems(probRes.data.data.problems);
+      setRevisions(revRes.data.data);
+      setProgressList(progRes.data.data);
     } catch {
       addToast("Failed to fetch revision database logs.", "error");
     } finally {
@@ -75,19 +74,17 @@ export function RevisionPage() {
   const processedQueue = useMemo(() => {
     let result = revisions.map((rev) => {
       const prob = problems.find((p) => p.id === rev.problemId);
-      const probSubmissions = submissions.filter((s) => s.problemId === rev.problemId);
+      const prog = progressList.find((p) => p.problemId === rev.problemId);
       
       return {
         ...rev,
         problemTitle: prob?.title || "Unknown Problem",
         topic: prob?.topic || "Arrays",
         difficulty: prob?.difficulty || "Medium",
-        submissions: probSubmissions,
+        isBookmarked: prog?.isBookmarked || false,
+        note: prog?.note || ""
       };
     });
-
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
 
     const nowTime = Date.now();
 
@@ -100,27 +97,26 @@ export function RevisionPage() {
     else if (filterMode === "Overdue") {
       result = result.filter((r) => {
         const d = new Date(r.nextReviewDate).getTime();
-        // Overdue if nextReviewDate is yesterday or older and status is todo
         const yesterday = Date.now() - 24 * 3600 * 1000;
         return d < yesterday && r.status === "todo";
       });
     } 
     else if (filterMode === "Completed") {
-      // Completed reviews logged today
       const todayStr = new Date().toISOString().split("T")[0];
       result = result.filter((r) => {
-        return r.submissions.some((s) => s.status === "Correct" && s.date.startsWith(todayStr));
+        const prog = progressList.find((p) => p.problemId === r.problemId);
+        return prog && ["Solved", "Revised Once", "Mastered"].includes(prog.status) && prog.updatedAt.startsWith(todayStr);
       });
     } 
     else if (filterMode === "Bookmarked") {
-      result = result.filter((r) => bookmarks.includes(r.problemId));
+      result = result.filter((r) => r.isBookmarked);
     } 
     else if (filterMode === "Mastered") {
       result = result.filter((r) => r.interval >= 15);
     }
 
     return result;
-  }, [revisions, problems, submissions, bookmarks, filterMode]);
+  }, [revisions, problems, progressList, filterMode]);
 
   // Calculations for Hero / Progress Cards
   const dueItems = useMemo(() => {
@@ -130,13 +126,11 @@ export function RevisionPage() {
 
   const completedTodayCount = useMemo(() => {
     const todayStr = new Date().toISOString().split("T")[0];
-    const uniqueSolvedToday = new Set(
-      submissions
-        .filter((s) => s.status === "Correct" && s.date.startsWith(todayStr))
-        .map((s) => s.problemId)
+    const solvedToday = progressList.filter(
+      (p) => ["Solved", "Revised Once", "Mastered"].includes(p.status) && p.updatedAt.startsWith(todayStr)
     );
-    return uniqueSolvedToday.size;
-  }, [submissions]);
+    return solvedToday.length;
+  }, [progressList]);
 
   const totalTodayTasks = dueItems.length + completedTodayCount;
   const progressPercent = totalTodayTasks > 0 ? Math.ceil((completedTodayCount / totalTodayTasks) * 100) : 0;
@@ -187,26 +181,19 @@ export function RevisionPage() {
 
   // Dynamic status check resolver
   const getProblemStatusDot = (probId: string) => {
-    const revision = revisions.find((r) => r.problemId === probId);
-    
-    if (revision) {
-      if (revision.interval >= 15) return "🟣";
-      if (revision.status === "todo") {
-        const isDue = new Date(revision.nextReviewDate).getTime() <= Date.now();
-        return isDue ? "🟡" : "🔵";
-      }
-      return "🔵";
-    }
-    return "⚪";
+    const prog = progressList.find((p) => p.problemId === probId);
+    if (!prog) return "⚪";
+    if (prog.status === "Mastered") return "🟣";
+    if (prog.status === "Needs Revision") return "🟡";
+    return "🔵";
   };
 
   // Last revised relative dates
-  const getLastRevisedLabel = (subs: any[]) => {
-    if (subs.length === 0) return "Never";
-    const correctOnes = subs.filter((s) => s.status === "Correct");
-    if (correctOnes.length === 0) return "Never";
+  const getLastRevisedLabel = (problemId: string) => {
+    const prog = progressList.find((p) => p.problemId === problemId);
+    if (!prog || !prog.totalAttempts) return "Never";
     
-    const latest = new Date(correctOnes[0].date);
+    const latest = new Date(prog.updatedAt);
     const diffDays = Math.ceil(Math.abs(Date.now() - latest.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) return "Just now";
@@ -214,20 +201,11 @@ export function RevisionPage() {
     return `${diffDays} days ago`;
   };
 
-  // Streaks count resolver
-  const activeStreak = useMemo(() => {
-    const streaks = JSON.parse(localStorage.getItem("mock_streaks") || "[]");
-    return streaks.length;
-  }, []);
+  const user = useAuthStore((state) => state.user);
+  const activeStreak = user?.streak?.current || 0;
 
   // Solve accuracy today
-  const todayAccuracy = useMemo(() => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const todaySubs = submissions.filter((s) => s.date.startsWith(todayStr));
-    if (todaySubs.length === 0) return "100%";
-    const correctCount = todaySubs.filter((s) => s.status === "Correct").length;
-    return `${Math.ceil((correctCount / todaySubs.length) * 100)}%`;
-  }, [submissions]);
+  const todayAccuracy = "100%";
 
   // Mastered counts
   const masteredCount = useMemo(() => {
@@ -397,7 +375,7 @@ export function RevisionPage() {
                             {item.repetitions}
                           </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">
-                            {getLastRevisedLabel(item.submissions)}
+                            {getLastRevisedLabel(item.problemId)}
                           </td>
                           <td className="px-4 py-3 text-xs font-medium">
                             <span className={cn(
@@ -499,7 +477,7 @@ export function RevisionPage() {
 
               <div>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase block">Completed Solves</span>
-                <span className="text-sm font-semibold text-foreground">{submissions.filter((s) => s.status === "Correct").length}</span>
+                <span className="text-sm font-semibold text-foreground">{progressList.filter((p) => ["Solved", "Revised Once", "Mastered"].includes(p.status)).length}</span>
               </div>
 
               <div>

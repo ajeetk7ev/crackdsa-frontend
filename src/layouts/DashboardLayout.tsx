@@ -7,7 +7,7 @@ import { PageLoader } from "@/components/ui/loader";
 import { ToastContainer } from "@/components/common/Toast";
 
 export function DashboardLayout() {
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { user, isLoading, checkAuth } = useAuthStore();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -21,16 +21,16 @@ export function DashboardLayout() {
 
   // Navigate to login if auth checks complete and user is unauthenticated
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate("/auth/login", { replace: true });
+    if (!isLoading && !user) {
+      navigate("/login", { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [user, isLoading, navigate]);
 
   if (isLoading) {
     return <PageLoader message="Loading dashboard workspace..." />;
   }
 
-  if (!isAuthenticated) return null;
+  if (!user) return null;
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
