@@ -16,10 +16,11 @@ import {
   Clock,
   Bookmark,
   CheckCircle2,
-  AlertCircle,
-  Calendar,
+  Circle,
   FileText,
   TrendingUp,
+  Calendar,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,17 +31,6 @@ interface Problem {
   topic: string;
 }
 
-interface Revision {
-  id: string;
-  userId: string;
-  problemId: string;
-  nextReviewDate: string;
-  interval: number;
-  easeFactor: number;
-  repetitions: number;
-  status: "todo" | "completed";
-}
-
 export function ProblemDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -48,14 +38,12 @@ export function ProblemDetailsPage() {
 
   // States
   const [problem, setProblem] = useState<Problem | null>(null);
-  const [revision, setRevision] = useState<Revision | null>(null);
   const [progress, setProgress] = useState<any>(null);
   const [notesText, setNotesText] = useState("");
-  const [submissions, setSubmissions] = useState<any[]>([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  
+
   // Stats states
-  const [timeTaken, setTimeTaken] = useState("38 min");
+  const [timeTaken, setTimeTaken] = useState("");
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [customReviewDate, setCustomReviewDate] = useState("");
 
@@ -72,34 +60,20 @@ export function ProblemDetailsPage() {
       const probRes = await api.get(`/problems/${id}`);
       setProblem(probRes.data.data);
 
-      // Fetch unified progress details from backend
       const progRes = await api.get(`/progress/${id}`);
       const prog = progRes.data.data;
       setProgress(prog);
-      
+
       setIsBookmarked(prog.isBookmarked || false);
       setNotesText(prog.note || "");
-      setTimeTaken(prog.timeTaken || "38 min");
+      setTimeTaken(prog.timeTaken || "");
 
       if (prog.srs && prog.srs.nextReviewDate) {
-        setRevision(prog.srs);
         const d = new Date(prog.srs.nextReviewDate);
         setCustomReviewDate(d.toISOString().split("T")[0]);
       } else {
-        setRevision(null);
         setCustomReviewDate("");
       }
-      
-      // Setup submissions/progress details to display in history timeline
-      setSubmissions(prog.totalAttempts > 0 ? [{
-        id: prog.id,
-        status: prog.status === "Attempted" ? "Wrong Answer" : "Correct",
-        date: prog.updatedAt,
-        timeSpentMinutes: prog.timeTaken ? parseInt(prog.timeTaken.replace(" min", "")) : 38,
-        confidence: prog.status === "Mastered" ? "High" : "Medium",
-        takeaway: prog.note
-      }] : []);
-
     } catch {
       addToast("Failed to fetch problem workspace records.", "error");
       navigate("/problems");
@@ -117,7 +91,7 @@ export function ProblemDetailsPage() {
     setSyncing(true);
     try {
       await api.post(`/notes/${id}`, { note: notesText });
-      addToast("Related notes updated successfully.", "success");
+      addToast("Notes updated successfully.", "success");
       loadProblemDetails();
     } catch {
       addToast("Failed to save note details.", "error");
@@ -130,26 +104,26 @@ export function ProblemDetailsPage() {
   const handleBookmarkToggle = async () => {
     try {
       await api.put(`/progress/${id}`, { isBookmarked: !isBookmarked });
-      addToast(isBookmarked ? "Problem removed from bookmarks." : "Problem bookmarked.", isBookmarked ? "info" : "success");
+      addToast(isBookmarked ? "Bookmark removed." : "Problem bookmarked.", isBookmarked ? "info" : "success");
       setIsBookmarked(!isBookmarked);
     } catch {
       addToast("Failed to toggle bookmark.", "error");
     }
   };
 
-  // Save Solve Time taken
+  // Save Solve Time
   const handleSaveTimeTaken = async () => {
     try {
-      await api.put(`/progress/${id}`, { timeTaken: timeTaken });
+      await api.put(`/progress/${id}`, { timeTaken });
       setIsEditingTime(false);
-      addToast("Solved duration stats updated.", "success");
+      addToast("Solve time updated.", "success");
       loadProblemDetails();
     } catch {
-      addToast("Failed to update solve duration.", "error");
+      addToast("Failed to update solve time.", "error");
     }
   };
 
-  // Reschedule revision by days offset
+  // Reschedule
   const handleRescheduleDays = async (days: number) => {
     setSyncing(true);
     try {
@@ -163,94 +137,111 @@ export function ProblemDetailsPage() {
     }
   };
 
-  // Set Custom Review Date
+  // Custom date
   const handleCustomDateChange = async (dateStr: string) => {
     setCustomReviewDate(dateStr);
     if (!dateStr) return;
-
     setSyncing(true);
     try {
       await api.post(`/revisions/${id}/custom-date`, { date: dateStr });
       addToast(`Revision scheduled for ${new Date(dateStr).toLocaleDateString()}`, "success");
       loadProblemDetails();
     } catch {
-      addToast("Failed to schedule custom revision date.", "error");
+      addToast("Failed to schedule revision date.", "error");
     } finally {
       setSyncing(false);
     }
   };
 
-  // Status Resolver Helper
-  const getProblemStatusLabel = () => {
-    if (progress) {
-      if (revision && revision.status === "todo") {
-        const isDue = new Date(revision.nextReviewDate).getTime() <= Date.now();
-        if (isDue) return "Needs Revision";
-      }
-      return progress.status;
-    }
-    if (submissions.length === 0) return "Not Started";
-    const sub = submissions[0];
-    if (sub.status === "Wrong Answer") return "Attempted";
-    
-    if (revision) {
-      if (revision.interval >= 15) return "Mastered";
-      if (revision.status === "todo") {
-        const isDue = new Date(revision.nextReviewDate).getTime() <= Date.now();
-        return isDue ? "Needs Revision" : "Revised Once";
-      }
-      return "Revised Once";
-    }
-    return "Solved";
-  };
-
-  const statusLabel = getProblemStatusLabel();
-
-  // Solved On date calculations
-  const getSolvedOnDateStr = () => {
-    if (submissions.length === 0 || submissions[0].status === "Wrong Answer") return "-";
-    return new Date(submissions[0].date).toLocaleDateString("en-US", { day: "numeric", month: "long" });
-  };
-
-  const solvedOnDate = getSolvedOnDateStr();
-
-  // Last Revised date relative label
-  const getLastRevisedLabel = () => {
-    if (submissions.length === 0 || !revision || revision.repetitions <= 1) return "-";
-    const latest = new Date(submissions[0].date);
-    const diffTime = Math.abs(Date.now() - latest.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays <= 1) return "Yesterday";
-    if (diffDays === 0) return "Just now";
-    return `${diffDays} days ago`;
-  };
-
-  const lastRevisedDate = getLastRevisedLabel();
-
-  // Revision count log
-  const getRevisionCount = () => {
-    return revision ? revision.repetitions : submissions.filter((s) => s.status === "Correct").length;
-  };
-
-  const revisionCount = getRevisionCount();
-
-
-
-  // Dynamic layout colors
+  // Dynamic colors
   const difficultyColors: Record<string, string> = {
     Easy: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20 border-emerald-500/20",
     Medium: "text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/20 border-amber-500/20",
     Hard: "text-rose-600 bg-rose-500/10 dark:text-rose-400 dark:bg-rose-500/20 border-rose-500/20",
   };
 
+  // Status label
+  const statusLabel = progress?.status || "Not Started";
+
+  // Format date helper
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return null;
+    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const formatDateShort = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  // Build the revision timeline milestones
+  const buildTimeline = () => {
+    const srs = progress?.srs;
+    const status = progress?.status;
+
+    // Milestone definitions
+    const milestones = [
+      {
+        label: "Solved",
+        key: "solved",
+        date: progress?.lastSolved && ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(status) ? progress.lastSolved : null,
+        isCompleted: ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(status),
+        isActive: status === "Solved",
+      },
+      {
+        label: "Revision 1",
+        key: "r1",
+        date: srs?.firstRevisionDate || null,
+        isCompleted: ["Revised Once", "Revised Twice", "Mastered"].includes(status),
+        isActive: status === "Solved" && srs?.firstRevisionDate,
+        isLocked: !srs?.firstRevisionDate,
+      },
+      {
+        label: "Revision 2",
+        key: "r2",
+        date: srs?.secondRevisionDate || null,
+        isCompleted: ["Revised Twice", "Mastered"].includes(status),
+        isActive: status === "Revised Once" && srs?.secondRevisionDate,
+        isLocked: !srs?.secondRevisionDate,
+      },
+      {
+        label: "Mastered",
+        key: "r3",
+        date: srs?.thirdRevisionDate || null,
+        isCompleted: status === "Mastered",
+        isActive: status === "Revised Twice" && srs?.thirdRevisionDate,
+        isLocked: !srs?.thirdRevisionDate,
+      },
+    ];
+
+    return milestones;
+  };
+
+  const timeline = buildTimeline();
+
+  // Status color helper
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Not Started": return "text-zinc-500";
+      case "Attempted": return "text-amber-500";
+      case "Solved": return "text-blue-500";
+      case "Revised Once": return "text-indigo-500";
+      case "Revised Twice": return "text-violet-500";
+      case "Mastered": return "text-emerald-500";
+      case "Needs Revision": return "text-orange-500";
+      default: return "text-muted-foreground";
+    }
+  };
+
   if (loading || !problem) {
     return <PageLoader message="Loading problem workspace..." />;
   }
 
+  const hasSRS = progress?.srs && ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(statusLabel);
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto text-left">
-      
+
       {/* 1. Header Navigation */}
       <div className="flex items-center justify-between">
         <Link
@@ -259,7 +250,7 @@ export function ProblemDetailsPage() {
         >
           <ArrowLeft className="size-3.5" /> Back to Problem Explorer
         </Link>
-        
+
         <button
           onClick={handleBookmarkToggle}
           className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all cursor-pointer shadow-sm"
@@ -280,9 +271,11 @@ export function ProblemDetailsPage() {
               {problem.difficulty}
             </span>
           </div>
-          
-          <div className="flex flex-wrap gap-2 text-xs">
+
+          <div className="flex flex-wrap gap-3 text-xs">
             <span className="text-muted-foreground font-medium">Topic: {problem.topic}</span>
+            <span className="text-muted-foreground">•</span>
+            <span className={cn("font-semibold", getStatusColor(statusLabel))}>{statusLabel}</span>
           </div>
         </div>
 
@@ -296,12 +289,142 @@ export function ProblemDetailsPage() {
         </Button>
       </div>
 
-      {/* 3. Redesigned Tracking Grid Layout */}
+      {/* 3. Revision Journey Timeline (horizontal circles + dotted line) */}
+      <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <Typography variant="title" className="text-foreground flex items-center gap-1.5">
+            <Calendar className="size-4 text-indigo-500" />
+            Revision Journey
+          </Typography>
+          {progress?.srs?.nextReviewDate && statusLabel !== "Mastered" && (
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2.5 py-0.5 rounded-full uppercase">
+              Next Due: {formatDateShort(progress.srs.nextReviewDate)}
+            </span>
+          )}
+          {statusLabel === "Mastered" && (
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-0.5 rounded-full uppercase">
+              ✓ Mastered
+            </span>
+          )}
+        </div>
+
+        {!hasSRS ? (
+          <div className="text-center py-8 space-y-2">
+            <Circle className="size-8 text-muted-foreground/30 mx-auto" />
+            <p className="text-xs text-muted-foreground">
+              Mark this problem as <span className="font-semibold text-foreground">Solved</span> to activate the revision schedule.
+            </p>
+          </div>
+        ) : (
+          <div className="py-6 px-2">
+            {/* Horizontal timeline */}
+            <div className="flex items-center justify-between relative">
+              {timeline.map((milestone, idx) => {
+                const isLast = idx === timeline.length - 1;
+
+                return (
+                  <div key={milestone.key} className="flex items-center flex-1 last:flex-none">
+                    {/* Circle node */}
+                    <div className="flex flex-col items-center relative z-10">
+                      {/* The circle */}
+                      <div
+                        className={cn(
+                          "size-11 rounded-full border-2 flex items-center justify-center transition-all shadow-sm",
+                          milestone.isCompleted
+                            ? "bg-emerald-500/15 border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                            : milestone.isActive
+                              ? "bg-indigo-500/15 border-indigo-500 text-indigo-600 dark:text-indigo-400 animate-pulse"
+                              : "bg-muted/40 border-border text-muted-foreground"
+                        )}
+                      >
+                        {milestone.isCompleted ? (
+                          <CheckCircle2 className="size-5" />
+                        ) : milestone.isLocked ? (
+                          <Lock className="size-4" />
+                        ) : (
+                          <Circle className="size-4" />
+                        )}
+                      </div>
+
+                      {/* Label below circle */}
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold mt-2 text-center whitespace-nowrap",
+                          milestone.isCompleted
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : milestone.isActive
+                              ? "text-indigo-600 dark:text-indigo-400"
+                              : "text-muted-foreground"
+                        )}
+                      >
+                        {milestone.label}
+                      </span>
+
+                      {/* Date below label */}
+                      <span className="text-[9px] text-muted-foreground mt-0.5 text-center">
+                        {milestone.date ? formatDateShort(milestone.date) : "Not scheduled"}
+                      </span>
+                    </div>
+
+                    {/* Dotted connecting line */}
+                    {!isLast && (
+                      <div className="flex-1 mx-2 relative h-[2px]">
+                        <div
+                          className={cn(
+                            "absolute top-0 left-0 right-0 h-[2px] border-t-2 border-dashed",
+                            // All milestones up to this point completed? Green line
+                            milestone.isCompleted
+                              ? "border-emerald-500/40"
+                              : "border-border"
+                          )}
+                          style={{ marginTop: "-22px" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Quick reschedule controls (only show if SRS is active) */}
+        {hasSRS && statusLabel !== "Mastered" && (
+          <div className="border-t border-border pt-4 space-y-3">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Reschedule Next Revision
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[3, 7, 14, 30].map((days) => (
+                <button
+                  key={days}
+                  onClick={() => handleRescheduleDays(days)}
+                  disabled={syncing}
+                  className="py-1.5 px-3.5 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-muted/40 transition-all cursor-pointer"
+                >
+                  +{days}d
+                </button>
+              ))}
+              <div className="flex items-center gap-1.5 ml-auto">
+                <input
+                  type="date"
+                  value={customReviewDate}
+                  onChange={(e) => handleCustomDateChange(e.target.value)}
+                  disabled={syncing}
+                  className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Main Content Grid */}
       <div className="grid gap-6 md:grid-cols-3">
-        
-        {/* Left Column (2/3 width) - Notes & Revision Scheduling */}
+
+        {/* Left Column (2/3) - Notes */}
         <div className="md:col-span-2 space-y-6">
-          
+
           {/* Related Notes Card */}
           <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-border pb-3">
@@ -319,81 +442,20 @@ export function ProblemDetailsPage() {
                 <Save className="size-3.5 mr-1" /> Save Notes
               </Button>
             </div>
-            
+
             <Textarea
-              placeholder="Document logic patterns, edge cases, and helper details..."
+              placeholder="Document logic patterns, edge cases, and key observations..."
               value={notesText}
               onChange={(e) => setNotesText(e.target.value)}
               className="text-xs h-40 leading-relaxed font-sans mt-2"
               disabled={syncing}
             />
           </div>
-
-          {/* Revision Card Scheduler */}
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <Typography variant="title" className="text-foreground flex items-center gap-1.5">
-                <Clock className="size-4 text-amber-500" />
-                Spaced Revision Scheduler
-              </Typography>
-              {revision && (
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">
-                  Due: {new Date(revision.nextReviewDate).toLocaleDateString()}
-                </span>
-              )}
-            </div>
-
-            <div className="space-y-4 py-2">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Reschedule your next revision target from the solve date. Preset intervals:
-              </p>
-
-              {/* Spaced Interval Buttons */}
-              <div className="grid grid-cols-3 gap-2.5">
-                <button
-                  onClick={() => handleRescheduleDays(3)}
-                  disabled={syncing}
-                  className="py-2 px-3 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-muted/40 transition-all cursor-pointer"
-                >
-                  3 Days
-                </button>
-                <button
-                  onClick={() => handleRescheduleDays(7)}
-                  disabled={syncing}
-                  className="py-2 px-3 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-muted/40 transition-all cursor-pointer"
-                >
-                  7 Days
-                </button>
-                <button
-                  onClick={() => handleRescheduleDays(30)}
-                  disabled={syncing}
-                  className="py-2 px-3 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-muted/40 transition-all cursor-pointer"
-                >
-                  30 Days
-                </button>
-              </div>
-
-              {/* Custom Date Input */}
-              <div className="flex flex-col gap-1.5 pt-2">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-left">
-                  Or select custom revision date:
-                </label>
-                <input
-                  type="date"
-                  value={customReviewDate}
-                  onChange={(e) => handleCustomDateChange(e.target.value)}
-                  disabled={syncing}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
-                />
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        {/* Right Column (1/3 width) - Status Updater & Stats Summary */}
+        {/* Right Column (1/3) - Status & Metrics */}
         <div className="space-y-6">
-          
+
           {/* Status changer card */}
           <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
             <div className="border-b border-border pb-3">
@@ -401,16 +463,15 @@ export function ProblemDetailsPage() {
                 Problem Status
               </Typography>
             </div>
-            
+
             <div className="space-y-3">
-              <div className="p-2.5 rounded-lg bg-muted/40 border border-border text-center">
-                <span className="text-xs font-semibold text-foreground uppercase block">Current Tracker State</span>
-                <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-1 block">
+              <div className="p-3 rounded-lg bg-muted/40 border border-border text-center">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Current State</span>
+                <span className={cn("text-sm font-bold mt-1 block", getStatusColor(statusLabel))}>
                   {statusLabel}
                 </span>
               </div>
 
-              {/* Log Attempt & Adjust button */}
               <Button
                 onClick={() => setIsStatusOpen(true)}
                 className="w-full text-xs font-semibold h-9 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
@@ -420,7 +481,7 @@ export function ProblemDetailsPage() {
             </div>
           </div>
 
-          {/* Statistics Card Summary */}
+          {/* Solving Metrics Card */}
           <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 text-left">
             <div className="border-b border-border pb-3 flex items-center justify-between">
               <Typography variant="title" className="text-foreground">
@@ -429,15 +490,18 @@ export function ProblemDetailsPage() {
               <TrendingUp className="size-4 text-emerald-500" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 py-2">
-              
-              {/* Stat 1 */}
+            <div className="grid grid-cols-2 gap-4 py-1">
+              {/* Solved On */}
               <div>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase block">Solved On</span>
-                <span className="text-sm font-semibold text-foreground">{solvedOnDate}</span>
+                <span className="text-sm font-semibold text-foreground">
+                  {progress?.lastSolved && ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(statusLabel)
+                    ? formatDateShort(progress.lastSolved)
+                    : "—"}
+                </span>
               </div>
 
-              {/* Stat 2: Time Taken (editable) */}
+              {/* Time Taken */}
               <div>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase block">Time Taken</span>
                 {isEditingTime ? (
@@ -446,139 +510,143 @@ export function ProblemDetailsPage() {
                       type="text"
                       value={timeTaken}
                       onChange={(e) => setTimeTaken(e.target.value)}
+                      placeholder="e.g. 25 min"
                       className="w-16 h-6 border rounded px-1.5 text-xs text-foreground bg-background"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleSaveTimeTaken();
                       }}
                     />
-                    <button
-                      onClick={handleSaveTimeTaken}
-                      className="text-[10px] font-semibold text-indigo-500 cursor-pointer"
-                    >
-                      ✓
-                    </button>
+                    <button onClick={handleSaveTimeTaken} className="text-[10px] font-semibold text-indigo-500 cursor-pointer">✓</button>
                   </div>
                 ) : (
                   <span
                     onClick={() => setIsEditingTime(true)}
                     className="text-sm font-semibold text-foreground hover:underline cursor-pointer border-b border-dotted border-border"
-                    title="Click to edit solved time duration"
+                    title="Click to edit"
                   >
-                    {timeTaken}
+                    {timeTaken || "—"}
                   </span>
                 )}
               </div>
 
-              {/* Stat 3 */}
+              {/* Revisions Done */}
               <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Revision Count</span>
-                <span className="text-sm font-semibold text-foreground">{revisionCount}</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Revisions</span>
+                <span className="text-sm font-semibold text-foreground">
+                  {progress?.srs?.repetitions ? Math.max(0, progress.srs.repetitions - 1) : 0}
+                </span>
               </div>
 
-              {/* Stat 4 */}
+              {/* Total Attempts */}
               <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Last Revised</span>
-                <span className="text-sm font-semibold text-foreground">{lastRevisedDate}</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Attempts</span>
+                <span className="text-sm font-semibold text-foreground">
+                  {progress?.totalAttempts || 0}
+                </span>
               </div>
-
             </div>
           </div>
-
         </div>
-
       </div>
 
-      {/* 4. Bottom Panel: High-Impact Revision History Timeline with Center Dotted Border */}
-      <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-6">
-        <Typography variant="title" className="text-foreground border-b border-border pb-3 block">
-          Practice & Revision Logs
-        </Typography>
+      {/* 5. Revision Schedule Details Card (visible only when SRS is active) */}
+      {hasSRS && (
+        <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+          <Typography variant="title" className="text-foreground border-b border-border pb-3 flex items-center gap-1.5">
+            <Clock className="size-4 text-amber-500" />
+            Revision Schedule Details
+          </Typography>
 
-        {submissions.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">
-            No revision milestones logged yet. Select a status of 'Solved' or schedule revisions to record history nodes.
-          </p>
-        ) : (
-          <div className="relative py-8">
-            
-            {/* Center Dotted Vertical Border Line (Attraction detail) */}
-            <div className="absolute top-0 bottom-0 left-4 md:left-1/2 md:-translate-x-1/2 w-[1.5px] border-l-2 border-dashed border-border/80" />
-
-            <div className="space-y-8 relative">
-              {submissions.map((sub, idx) => {
-                const subDate = new Date(sub.date);
-                const isLeft = idx % 2 === 0;
-                const isCorrect = sub.status === "Correct";
-
-                return (
-                  <div key={sub.id || idx} className="relative flex flex-col md:flex-row md:items-center">
-                    
-                    {/* Center point node indicator */}
-                    <div className={cn(
-                      "absolute left-4 -translate-x-1/2 md:left-1/2 md:-translate-x-1/2 size-4.5 rounded-full border bg-background z-10 flex items-center justify-center shadow-sm",
-                      isCorrect ? "border-emerald-500" : "border-amber-500"
-                    )}>
-                      <div className={cn("size-2 rounded-full", isCorrect ? "bg-emerald-500" : "bg-amber-500")} />
-                    </div>
-
-                    {/* Timeline card items */}
-                    <div className={cn(
-                      "w-full pl-10 md:w-1/2 md:pl-0",
-                      isLeft ? "md:pr-10 md:text-right" : "md:pl-10 md:left-1/2"
-                    )}>
-                      <div className={cn(
-                        "p-4 rounded-xl border border-border bg-background/50 inline-block text-left shadow-sm max-w-sm w-full",
-                        isLeft ? "md:text-left" : ""
-                      )}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          {isCorrect ? (
-                            <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                          ) : (
-                            <AlertCircle className="size-4 text-amber-500 shrink-0" />
-                          )}
-                          <span className="text-xs font-bold text-foreground">
-                            {isCorrect ? "Attempt Succeeded" : "Practice Attempt Logged"}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded ml-auto">
-                            #{submissions.length - idx}
-                          </span>
-                        </div>
-                        
-                        <p className="text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
-                          <Calendar className="size-3" />
-                          {subDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                        </p>
-
-                        {/* Custom recorded session metrics */}
-                        {sub.takeaway ? (
-                          <div className="text-[11px] text-foreground leading-relaxed font-sans bg-muted/20 border-l-2 border-indigo-500 pl-2 py-1 px-1.5 rounded mt-2">
-                            {sub.takeaway}
-                          </div>
-                        ) : (
-                          <div className="text-[11px] text-muted-foreground leading-relaxed italic border-l-2 border-border pl-2 bg-muted/20 py-1.5 px-2 rounded-r">
-                            Spaced Repetition interval verified locally. Memory decay counters updated.
-                          </div>
-                        )}
-
-                        <div className="flex gap-2.5 mt-2.5 text-[9px] text-muted-foreground font-semibold">
-                          {sub.timeSpentMinutes !== undefined && sub.timeSpentMinutes !== 0 && (
-                            <span className="bg-muted/80 px-2 py-0.5 rounded">⏱️ {sub.timeSpentMinutes} mins</span>
-                          )}
-                          {sub.confidence && (
-                            <span className="bg-muted/80 px-2 py-0.5 rounded">🎯 Confidence: {sub.confidence}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                );
-              })}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {/* R1 */}
+            <div className={cn(
+              "p-4 rounded-xl border space-y-2 transition-all",
+              ["Revised Once", "Revised Twice", "Mastered"].includes(statusLabel)
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : statusLabel === "Solved" && progress?.srs?.firstRevisionDate
+                  ? "border-indigo-500/30 bg-indigo-500/5"
+                  : "border-border bg-muted/20"
+            )}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">R1 — First Revision</span>
+                {["Revised Once", "Revised Twice", "Mastered"].includes(statusLabel) ? (
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                ) : (
+                  <Circle className="size-4 text-muted-foreground/40" />
+                )}
+              </div>
+              <p className="text-lg font-semibold text-foreground">
+                {formatDate(progress?.srs?.firstRevisionDate) || "Not scheduled"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {["Revised Once", "Revised Twice", "Mastered"].includes(statusLabel)
+                  ? "✓ Completed"
+                  : progress?.srs?.firstRevisionDate
+                    ? new Date(progress.srs.firstRevisionDate) <= new Date() ? "⏰ Due now" : "⏳ Upcoming"
+                    : "—"}
+              </p>
             </div>
 
+            {/* R2 */}
+            <div className={cn(
+              "p-4 rounded-xl border space-y-2 transition-all",
+              ["Revised Twice", "Mastered"].includes(statusLabel)
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : statusLabel === "Revised Once" && progress?.srs?.secondRevisionDate
+                  ? "border-indigo-500/30 bg-indigo-500/5"
+                  : "border-border bg-muted/20"
+            )}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">R2 — Second Revision</span>
+                {["Revised Twice", "Mastered"].includes(statusLabel) ? (
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                ) : (
+                  <Circle className="size-4 text-muted-foreground/40" />
+                )}
+              </div>
+              <p className="text-lg font-semibold text-foreground">
+                {formatDate(progress?.srs?.secondRevisionDate) || "Not scheduled"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {["Revised Twice", "Mastered"].includes(statusLabel)
+                  ? "✓ Completed"
+                  : progress?.srs?.secondRevisionDate
+                    ? new Date(progress.srs.secondRevisionDate) <= new Date() ? "⏰ Due now" : "⏳ Upcoming"
+                    : "—"}
+              </p>
+            </div>
+
+            {/* R3 */}
+            <div className={cn(
+              "p-4 rounded-xl border space-y-2 transition-all",
+              statusLabel === "Mastered"
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : statusLabel === "Revised Twice" && progress?.srs?.thirdRevisionDate
+                  ? "border-indigo-500/30 bg-indigo-500/5"
+                  : "border-border bg-muted/20"
+            )}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">R3 — Mastery Check</span>
+                {statusLabel === "Mastered" ? (
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                ) : (
+                  <Circle className="size-4 text-muted-foreground/40" />
+                )}
+              </div>
+              <p className="text-lg font-semibold text-foreground">
+                {formatDate(progress?.srs?.thirdRevisionDate) || "Not scheduled"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {statusLabel === "Mastered"
+                  ? "✓ Completed — Problem mastered! 👑"
+                  : progress?.srs?.thirdRevisionDate
+                    ? new Date(progress.srs.thirdRevisionDate) <= new Date() ? "⏰ Due now" : "⏳ Upcoming"
+                    : "—"}
+              </p>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Centralized Status Log Modal */}
       <StatusChangeModal
@@ -587,7 +655,7 @@ export function ProblemDetailsPage() {
         problemId={problem?.id || null}
         problemTitle={problem?.title || null}
         onStatusUpdated={() => {
-          loadProblemDetails(); // reload detail data
+          loadProblemDetails();
         }}
       />
 
