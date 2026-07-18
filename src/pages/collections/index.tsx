@@ -25,6 +25,12 @@ import {
   RefreshCw,
   Award,
   ArrowLeft,
+  CircleDashed,
+  Zap,
+  Sparkles,
+  Crown,
+  Clock,
+  Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -115,7 +121,7 @@ export function CollectionsPage() {
   // Check if problem is solved
   const isProblemSolved = (probId: string) => {
     return progressList.some(
-      (p) => p.problemId === probId && ["Solved", "Revised Once", "Mastered"].includes(p.status)
+      (p) => p.problemId === probId && ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(p.status)
     );
   };
 
@@ -274,20 +280,20 @@ export function CollectionsPage() {
     if (!prog) {
       return {
         text: "Not Started",
-        icon: <Circle className="size-4 text-muted-foreground/60 mx-auto" />
+        icon: <CircleDashed className="size-4 text-muted-foreground/60 mx-auto" />
       };
     }
 
     if (prog.status === "Mastered") {
       return {
         text: "Mastered",
-        icon: <Award className="size-4 text-purple-500 mx-auto" />
+        icon: <Crown className="size-4 text-purple-500 mx-auto animate-pulse" />
       };
     }
     if (prog.status === "Needs Revision") {
       return {
         text: "Needs Revision",
-        icon: <AlertCircle className="size-4 text-amber-500 mx-auto" />
+        icon: <Clock className="size-4 text-amber-500 mx-auto" />
       };
     }
     if (prog.status === "Revised Once") {
@@ -296,23 +302,47 @@ export function CollectionsPage() {
         icon: <RefreshCw className="size-4 text-blue-500 mx-auto" />
       };
     }
+    if (prog.status === "Revised Twice") {
+      return {
+        text: "Revised Twice",
+        icon: <Flame className="size-4 text-orange-500 mx-auto" />
+      };
+    }
     if (prog.status === "Solved") {
       return {
         text: "Solved",
-        icon: <CheckCircle2 className="size-4 text-emerald-500 mx-auto" />
+        icon: <Sparkles className="size-4 text-emerald-500 mx-auto" />
       };
     }
     if (prog.status === "Attempted") {
       return {
         text: "Attempted",
-        icon: <AlertCircle className="size-4 text-amber-400 mx-auto" />
+        icon: <Zap className="size-4 text-amber-400 mx-auto" />
       };
     }
 
     return {
       text: "Not Started",
-      icon: <Circle className="size-4 text-muted-foreground/60 mx-auto" />
+      icon: <CircleDashed className="size-4 text-muted-foreground/60 mx-auto" />
     };
+  };
+
+  // Last revised relative dates
+  const getLastRevisedLabel = (problemId: string) => {
+    const prog = progressList.find((p) => p.problemId === problemId);
+    if (!prog) return "Never";
+    
+    const dateVal = prog.lastSolved || prog.updatedAt;
+    if (!dateVal) return "Never";
+    
+    const latest = new Date(dateVal);
+    if (isNaN(latest.getTime())) return "Never";
+    
+    return latest.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   // Open Notes Dialog
@@ -477,6 +507,7 @@ export function CollectionsPage() {
                     <th className="px-4 py-3 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Problem</th>
                     <th className="px-4 py-3 text-center w-24 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Practice</th>
                     <th className="px-4 py-3 w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Difficulty</th>
+                    <th className="px-4 py-3 w-32 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Last Solved</th>
                     <th className="px-4 py-3 w-36 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] text-left">Next Revision</th>
                     <th className="px-4 py-3 text-center w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Actions</th>
                   </tr>
@@ -484,7 +515,7 @@ export function CollectionsPage() {
                 <tbody className="divide-y divide-border text-sm">
                   {activePlaylistProblems.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-12 text-center text-muted-foreground">
                         <div className="max-w-md mx-auto space-y-2">
                           <Library className="size-8 text-muted-foreground/60 mx-auto" />
                           <p className="font-semibold text-foreground">Playlist is empty</p>
@@ -501,12 +532,16 @@ export function CollectionsPage() {
 
                       // Next review dates
                       let reviewDateStr = "-";
-                      if (prog && prog.srs && prog.srs.nextReviewDate) {
-                        if (prog.srs.status === "completed") {
-                          reviewDateStr = "Done";
-                        } else {
-                          const d = new Date(prog.srs.nextReviewDate);
-                          reviewDateStr = d.getTime() <= Date.now() ? "Due Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                      if (prog) {
+                        if (prog.status === "Mastered") {
+                          reviewDateStr = "👑 Mastered";
+                        } else if (prog.srs && prog.srs.nextReviewDate) {
+                          if (prog.srs.status === "completed") {
+                            reviewDateStr = "Done";
+                          } else {
+                            const d = new Date(prog.srs.nextReviewDate);
+                            reviewDateStr = d.getTime() <= Date.now() ? "Due Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                          }
                         }
                       }
 
@@ -565,9 +600,13 @@ export function CollectionsPage() {
                               {prob.difficulty}
                             </span>
                           </td>
+                          <td className="px-4 py-3.5 text-xs text-muted-foreground text-left">
+                            {getLastRevisedLabel(prob.id)}
+                          </td>
                           <td className="px-4 py-3.5 text-xs text-left">
                             <span className={cn(
                               "font-medium",
+                              reviewDateStr === "👑 Mastered" ? "text-purple-600 dark:text-purple-400 font-bold" :
                               reviewDateStr === "Due Today" ? "text-amber-500 font-semibold animate-pulse" : "text-muted-foreground"
                             )}>
                               {reviewDateStr}

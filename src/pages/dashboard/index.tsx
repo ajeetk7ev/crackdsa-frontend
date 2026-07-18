@@ -183,7 +183,7 @@ export function DashboardPage() {
   );
 
   const solvedProblemIds = progressList
-    .filter((p) => ["Solved", "Revised Once", "Mastered"].includes(p.status))
+    .filter((p) => ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(p.status))
     .map((p) => p.problemId);
 
   return (

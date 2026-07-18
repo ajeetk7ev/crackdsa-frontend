@@ -24,6 +24,12 @@ import {
   CheckCircle2,
   RefreshCw,
   Award,
+  CircleDashed,
+  Zap,
+  Sparkles,
+  Crown,
+  Clock,
+  Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +97,8 @@ export function ProblemsPage() {
           limit: pageSize,
           difficulty: filterDifficulty,
           search: searchQuery,
-          status: filterStatus
+          status: filterStatus,
+          sort: sortBy
         }
       });
       const progRes = await api.get("/progress");
@@ -159,7 +166,7 @@ export function ProblemsPage() {
       return {
         text: "Not Started",
         color: "text-muted-foreground",
-        icon: <Circle className="size-4 text-muted-foreground/60 mx-auto" />
+        icon: <CircleDashed className="size-4 text-muted-foreground/60 mx-auto" />
       };
     }
 
@@ -167,14 +174,14 @@ export function ProblemsPage() {
       return {
         text: "Mastered",
         color: "text-purple-600 dark:text-purple-400",
-        icon: <Award className="size-4 text-purple-500 mx-auto" />
+        icon: <Crown className="size-4 text-purple-500 mx-auto animate-pulse" />
       };
     }
     if (prog.status === "Needs Revision") {
       return {
         text: "Needs Revision",
         color: "text-amber-600 dark:text-amber-400",
-        icon: <AlertCircle className="size-4 text-amber-500 mx-auto" />
+        icon: <Clock className="size-4 text-amber-500 mx-auto" />
       };
     }
     if (prog.status === "Revised Once") {
@@ -184,26 +191,51 @@ export function ProblemsPage() {
         icon: <RefreshCw className="size-4 text-blue-500 mx-auto" />
       };
     }
+    if (prog.status === "Revised Twice") {
+      return {
+        text: "Revised Twice",
+        color: "text-orange-600 dark:text-orange-400",
+        icon: <Flame className="size-4 text-orange-500 mx-auto" />
+      };
+    }
     if (prog.status === "Solved") {
       return {
         text: "Solved",
         color: "text-emerald-600 dark:text-emerald-400",
-        icon: <CheckCircle2 className="size-4 text-emerald-500 mx-auto" />
+        icon: <Sparkles className="size-4 text-emerald-500 mx-auto" />
       };
     }
     if (prog.status === "Attempted") {
       return {
         text: "Attempted",
         color: "text-amber-500",
-        icon: <AlertCircle className="size-4 text-amber-400 mx-auto" />
+        icon: <Zap className="size-4 text-amber-400 mx-auto" />
       };
     }
 
     return {
       text: "Not Started",
       color: "text-muted-foreground",
-      icon: <Circle className="size-4 text-muted-foreground/60 mx-auto" />
+      icon: <CircleDashed className="size-4 text-muted-foreground/60 mx-auto" />
     };
+  };
+
+  // Last revised relative dates
+  const getLastRevisedLabel = (problemId: string) => {
+    const prog = progressList.find((p) => p.problemId === problemId);
+    if (!prog) return "Never";
+    
+    const dateVal = prog.lastSolved || prog.updatedAt;
+    if (!dateVal) return "Never";
+    
+    const latest = new Date(dateVal);
+    if (isNaN(latest.getTime())) return "Never";
+    
+    return latest.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   // Open Status Dialog
@@ -238,7 +270,7 @@ export function ProblemsPage() {
 
   // Aggregate Header stats
   const solvedCount = progressList.filter((p) =>
-    ["Solved", "Revised Once", "Mastered"].includes(p.status)
+    ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(p.status)
   ).length;
   const percentComplete = totalItems > 0 ? Math.ceil((solvedCount / totalItems) * 100) : 0;
 
@@ -389,7 +421,8 @@ export function ProblemsPage() {
               { value: "Attempted", label: "Attempted" },
               { value: "Solved", label: "Solved" },
               { value: "Needs Revision", label: "Needs Revision" },
-              { value: "Revised Once", label: "Revised" },
+              { value: "Revised Once", label: "Revised Once" },
+              { value: "Revised Twice", label: "Revised Twice" },
               { value: "Mastered", label: "Mastered" },
               { value: "Bookmarked", label: "Bookmarked Only" },
             ]}
@@ -427,6 +460,7 @@ export function ProblemsPage() {
                 <th className="px-4 py-3 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Problem</th>
                 <th className="px-4 py-3 text-center w-24 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Practice</th>
                 <th className="px-4 py-3 w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Difficulty</th>
+                <th className="px-4 py-3 w-32 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Last Solved</th>
                 <th className="px-4 py-3 w-36 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Next Revision</th>
                 <th className="px-4 py-3 text-center w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Actions</th>
               </tr>
@@ -434,7 +468,7 @@ export function ProblemsPage() {
             <tbody className="divide-y divide-border text-sm">
               {paginatedProblems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="py-12 text-center text-muted-foreground">
                     <div className="max-w-md mx-auto space-y-2">
                       <XCircle className="size-8 text-muted-foreground/60 mx-auto" />
                       <p className="font-semibold text-foreground">No matches found</p>
@@ -453,12 +487,16 @@ export function ProblemsPage() {
 
                   // Next review dates calculation
                   let reviewDateStr = "-";
-                  if (prog && prog.srs && prog.srs.nextReviewDate) {
-                    if (prog.srs.status === "completed") {
-                      reviewDateStr = "Done";
-                    } else {
-                      const d = new Date(prog.srs.nextReviewDate);
-                      reviewDateStr = d.getTime() <= Date.now() ? "Due Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                  if (prog) {
+                    if (prog.status === "Mastered") {
+                      reviewDateStr = "👑 Mastered";
+                    } else if (prog.srs && prog.srs.nextReviewDate) {
+                      if (prog.srs.status === "completed") {
+                        reviewDateStr = "Done";
+                      } else {
+                        const d = new Date(prog.srs.nextReviewDate);
+                        reviewDateStr = d.getTime() <= Date.now() ? "Due Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                      }
                     }
                   }
 
@@ -519,9 +557,13 @@ export function ProblemsPage() {
                           {prob.difficulty}
                         </span>
                       </td>
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                        {getLastRevisedLabel(prob.id)}
+                      </td>
                       <td className="px-4 py-3.5 text-xs font-medium">
                         <span className={cn(
                           "font-medium",
+                          reviewDateStr === "👑 Mastered" ? "text-purple-600 dark:text-purple-400 font-bold" :
                           reviewDateStr === "Due Today" ? "text-amber-500 font-semibold animate-pulse" : "text-muted-foreground"
                         )}>
                           {reviewDateStr}

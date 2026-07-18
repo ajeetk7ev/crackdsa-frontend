@@ -49,6 +49,7 @@ export function ProblemDetailsPage() {
   // States
   const [problem, setProblem] = useState<Problem | null>(null);
   const [revision, setRevision] = useState<Revision | null>(null);
+  const [progress, setProgress] = useState<any>(null);
   const [notesText, setNotesText] = useState("");
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -74,6 +75,7 @@ export function ProblemDetailsPage() {
       // Fetch unified progress details from backend
       const progRes = await api.get(`/progress/${id}`);
       const prog = progRes.data.data;
+      setProgress(prog);
       
       setIsBookmarked(prog.isBookmarked || false);
       setNotesText(prog.note || "");
@@ -180,6 +182,13 @@ export function ProblemDetailsPage() {
 
   // Status Resolver Helper
   const getProblemStatusLabel = () => {
+    if (progress) {
+      if (revision && revision.status === "todo") {
+        const isDue = new Date(revision.nextReviewDate).getTime() <= Date.now();
+        if (isDue) return "Needs Revision";
+      }
+      return progress.status;
+    }
     if (submissions.length === 0) return "Not Started";
     const sub = submissions[0];
     if (sub.status === "Wrong Answer") return "Attempted";

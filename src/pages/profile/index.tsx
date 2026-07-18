@@ -204,7 +204,7 @@ export function ProfilePage() {
   // Stats Calculations
   const solvedCount = useMemo(() => {
     return progressList.filter(
-      (p) => ["Solved", "Revised Once", "Mastered"].includes(p.status)
+      (p) => ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(p.status)
     ).length;
   }, [progressList]);
 
@@ -259,7 +259,7 @@ export function ProfilePage() {
       // Calculate solved count on this day from progressList
       const count = progressList.filter(
         (p) =>
-          ["Solved", "Needs Revision", "Revised Once", "Mastered"].includes(p.status) &&
+          ["Solved", "Needs Revision", "Revised Once", "Revised Twice", "Mastered"].includes(p.status) &&
           p.updatedAt &&
           p.updatedAt.startsWith(dateStr)
       ).length;
