@@ -223,11 +223,7 @@ export function DashboardPage() {
         <Typography variant="h3" className="font-semibold text-foreground border-l-2 border-primary pl-2 text-left">
           Consistency Analytics
         </Typography>
-        <LearningProgress
-          solvedCount={solvedProblemIds.length}
-          totalCount={problems.length}
-          streaks={user?.solvedDates || []}
-        />
+        <LearningProgress />
       </div>
 
 

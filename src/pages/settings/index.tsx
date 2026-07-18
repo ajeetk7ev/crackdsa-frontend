@@ -28,7 +28,6 @@ export function SettingsPage() {
   const logout = useAuthStore((state) => state.logout);
   const addToast = useNotificationStore((state: any) => state.addToast);
 
-  const { theme, setTheme } = useThemeStore();
 
   // Active Tab state Binds
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");

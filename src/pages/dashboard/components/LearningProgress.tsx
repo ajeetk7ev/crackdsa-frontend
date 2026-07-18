@@ -1,111 +1,94 @@
+import { useState, useEffect } from "react";
+import { api } from "@/lib/axios";
 import { Typography } from "@/components/ui/typography";
 import { Flame, Sparkles, TrendingUp } from "lucide-react";
+import { Spinner } from "@/components/ui/loader";
 
-interface LearningProgressProps {
-  solvedCount: number;
-  totalCount: number;
-  streaks: string[]; // dates array
+interface WeeklyDay {
+  date: string;
+  day: string;
+  count: number;
 }
 
-export function LearningProgress({ solvedCount, totalCount, streaks }: LearningProgressProps) {
-  // 1. Overall Progress circular SVG gauge calculations
-  const total = totalCount || 100;
-  const solved = solvedCount;
-  const percentage = Math.min(100, Math.ceil((solved / total) * 100));
+interface ConsistencyDot {
+  date: string;
+  dayLabel: string;
+  count: number;
+}
 
+interface DashboardAnalytics {
+  overall: {
+    solvedCount: number;
+    totalProblems: number;
+    percentage: number;
+    difficultyBreakdown: { Easy: number; Medium: number; Hard: number };
+  };
+  weeklyProgress: WeeklyDay[];
+  totalWeeklySolves: number;
+  streak: {
+    current: number;
+    longest: number;
+  };
+  consistencyDots: ConsistencyDot[];
+  readiness: {
+    score: number;
+    grade: string;
+    masteredCount: number;
+  };
+}
+
+export function LearningProgress() {
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const res = await api.get("/progress/dashboard-analytics");
+        setAnalytics(res.data.data);
+      } catch {
+        // Silently fail — cards will show zero states
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="p-6 rounded-xl border border-border bg-card h-52 flex items-center justify-center">
+            <Spinner className="size-5 text-muted-foreground" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="p-6 rounded-xl border border-border bg-card text-center">
+        <p className="text-xs text-muted-foreground">Unable to load analytics data.</p>
+      </div>
+    );
+  }
+
+  const { overall, weeklyProgress, totalWeeklySolves, streak, consistencyDots, readiness } = analytics;
+
+  // Circular gauge calculations
   const radius = 34;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+  const strokeDashoffset = circumference - (overall.percentage / 100) * circumference;
 
-  // 2. Weekly progress calculations: solve count for the last 7 days
-  const getWeeklySolves = () => {
-    const today = new Date();
-    const dates = Array.from({ length: 7 }).map((_, idx) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() - (6 - idx));
-      return d.toISOString().split("T")[0];
-    });
-
-    return dates.map((dateStr) => {
-      // count correct submissions on this date
-      return streaks.includes(dateStr) ? 1 : 0;
-    });
-  };
-
-  const weeklyData = getWeeklySolves();
-  const maxBarHeight = 35; // px
-
-  // 3. Interview Readiness Index score simulator
-  const computeReadinessScore = () => {
-    if (solvedCount === 0) return 100;
-    // score builds based on number solved, maxing out at 950
-    return Math.min(950, Math.ceil(150 + (solvedCount / total) * 750 + (streaks.length * 5)));
-  };
-  const readinessScore = computeReadinessScore();
-
-  const getReadinessGrade = (score: number) => {
-    if (score < 300) return "Needs Practice";
-    if (score < 600) return "Early Prep";
-    if (score < 800) return "Ready for Intern/Junior";
-    return "Ready for Mid-Level SDE";
-  };
-
-  // 4. Consistency Calendar dots: last 14 days
-  const getCalendarDots = () => {
-    const today = new Date();
-    return Array.from({ length: 14 }).map((_, idx) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() - (13 - idx));
-      const dateStr = d.toISOString().split("T")[0];
-      const isSolved = streaks.includes(dateStr);
-      
-      const dayName = d.toLocaleDateString("en-US", { weekday: "narrow" });
-
-      return {
-        dateStr,
-        isSolved,
-        dayName,
-      };
-    });
-  };
-
-  const calendarDots = getCalendarDots();
-
-  // Streak size logic
-  const calculateCurrentStreak = () => {
-    if (streaks.length === 0) return 0;
-    const sortedDates = [...new Set(streaks)].sort(
-      (a, b) => new Date(b).getTime() - new Date(a).getTime()
-    );
-
-    let streak = 0;
-    const todayStr = new Date().toISOString().split("T")[0];
-    const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-
-    // If no solve today or yesterday, streak is broken
-    if (sortedDates[0] !== todayStr && sortedDates[0] !== yesterdayStr) {
-      return 0;
-    }
-
-    let checkDate = new Date();
-    // Start checking from today
-    while (true) {
-      const checkStr = checkDate.toISOString().split("T")[0];
-      if (sortedDates.includes(checkStr)) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    return streak;
-  };
-
-  const activeStreak = calculateCurrentStreak();
+  // Weekly chart bar heights
+  const maxWeeklyCount = Math.max(...weeklyProgress.map((d) => d.count), 1);
+  const maxBarHeight = 40;
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-      {/* 3.1 Overall Progress Card */}
+      {/* 1. Overall Progress Card */}
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full hover:shadow-md transition-shadow">
         <Typography variant="subtitle" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
           Overall Progress
@@ -115,13 +98,7 @@ export function LearningProgress({ solvedCount, totalCount, streaks }: LearningP
           {/* Circular SVG Progress */}
           <div className="relative size-20 shrink-0 flex items-center justify-center select-none">
             <svg className="size-full -rotate-90">
-              <circle
-                cx="40"
-                cy="40"
-                r={radius}
-                className="stroke-muted fill-none"
-                strokeWidth="5"
-              />
+              <circle cx="40" cy="40" r={radius} className="stroke-muted fill-none" strokeWidth="5" />
               <circle
                 cx="40"
                 cy="40"
@@ -133,26 +110,34 @@ export function LearningProgress({ solvedCount, totalCount, streaks }: LearningP
                 strokeLinecap="round"
               />
             </svg>
-            <span className="absolute text-sm font-semibold text-foreground">
-              {percentage}%
-            </span>
+            <span className="absolute text-sm font-semibold text-foreground">{overall.percentage}%</span>
           </div>
 
           <div className="space-y-1">
             <p className="text-2xl font-light text-foreground">
-              {solved} <span className="text-xs text-muted-foreground">Solved</span>
+              {overall.solvedCount} <span className="text-xs text-muted-foreground">Solved</span>
             </p>
             <p className="text-[11px] text-muted-foreground leading-none">
-              Total directory: {total} items
+              Total directory: {overall.totalProblems} items
             </p>
           </div>
         </div>
-        <div className="text-[10px] text-muted-foreground">
-          Track completions across arrays, trees, and logic topics.
+
+        {/* Difficulty breakdown pills */}
+        <div className="flex gap-2 text-[10px] font-semibold">
+          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            Easy {overall.difficultyBreakdown.Easy}
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            Med {overall.difficultyBreakdown.Medium}
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+            Hard {overall.difficultyBreakdown.Hard}
+          </span>
         </div>
       </div>
 
-      {/* 3.2 Interview Readiness Index */}
+      {/* 2. Interview Readiness Index */}
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full hover:shadow-md transition-shadow">
         <Typography variant="subtitle" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
           Readiness Index
@@ -161,55 +146,65 @@ export function LearningProgress({ solvedCount, totalCount, streaks }: LearningP
 
         <div className="space-y-1">
           <p className="text-3xl font-light text-foreground">
-            {readinessScore} <span className="text-xs font-semibold text-muted-foreground">/ 1000</span>
+            {readiness.score} <span className="text-xs font-semibold text-muted-foreground">/ 1000</span>
           </p>
           <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
-            {getReadinessGrade(readinessScore)}
+            {readiness.grade}
           </p>
         </div>
 
-        <p className="text-[10px] text-muted-foreground leading-relaxed">
-          {readinessScore < 700
-            ? "Your scoring index is building. Solve Hard questions to boost readiness grades."
-            : "✓ High rating. Your topic speed averages indicate strong technical readiness."}
-        </p>
+        <div className="space-y-1">
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            {readiness.score < 700
+              ? "Solve harder questions and maintain daily streaks to boost your readiness grade."
+              : "✓ High rating. Your topic coverage indicates strong technical readiness."}
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            <span className="font-semibold text-foreground">{readiness.masteredCount}</span> problems mastered
+          </p>
+        </div>
       </div>
 
-      {/* 3.3 Weekly Progress Chart */}
+      {/* 3. Weekly Progress Chart */}
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full hover:shadow-md transition-shadow">
-        <Typography variant="subtitle" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-          Weekly Progress
-        </Typography>
+        <div className="flex items-center justify-between">
+          <Typography variant="subtitle" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+            Weekly Progress
+          </Typography>
+          <span className="text-[10px] font-semibold text-primary">
+            {totalWeeklySolves} solve{totalWeeklySolves !== 1 ? "s" : ""}
+          </span>
+        </div>
 
-        {/* SVG columns chart */}
-        <div className="flex items-end justify-between h-12 px-1 pt-2">
-          {weeklyData.map((val, idx) => {
-            const h = val > 0 ? maxBarHeight : 4; // minimum visual block
+        {/* Bar chart */}
+        <div className="flex items-end justify-between h-14 px-1 pt-2">
+          {weeklyProgress.map((dayData, idx) => {
+            const barH = dayData.count > 0 ? Math.max(6, (dayData.count / maxWeeklyCount) * maxBarHeight) : 4;
             return (
-              <div key={idx} className="flex flex-col items-center gap-1 flex-1">
+              <div key={idx} className="flex flex-col items-center gap-1 flex-1" title={`${dayData.date}: ${dayData.count} solved`}>
+                {dayData.count > 0 && (
+                  <span className="text-[8px] font-semibold text-primary">{dayData.count}</span>
+                )}
                 <div
                   className={`w-4 rounded-t transition-all duration-300 ${
-                    val > 0 ? "bg-primary" : "bg-muted/80"
+                    dayData.count > 0 ? "bg-primary" : "bg-muted/80"
                   }`}
-                  style={{ height: `${h}px` }}
+                  style={{ height: `${barH}px` }}
                 />
               </div>
             );
           })}
         </div>
 
+        {/* Day labels from backend (accurate weekday names) */}
         <div className="flex justify-between text-[9px] text-muted-foreground border-t border-border/40 pt-2 px-1">
-          <span>Mon</span>
-          <span>Tue</span>
-          <span>Wed</span>
-          <span>Thu</span>
-          <span>Fri</span>
-          <span>Sat</span>
-          <span>Sun</span>
+          {weeklyProgress.map((dayData, idx) => (
+            <span key={idx} className="flex-1 text-center">{dayData.day}</span>
+          ))}
         </div>
       </div>
 
-      {/* 3.4 Consistency Streak Calendar */}
+      {/* 4. Consistency Streak Calendar */}
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full hover:shadow-md transition-shadow">
         <Typography variant="subtitle" className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
           Current Streak
@@ -218,18 +213,23 @@ export function LearningProgress({ solvedCount, totalCount, streaks }: LearningP
 
         <div className="space-y-1">
           <p className="text-3xl font-light text-foreground">
-            {activeStreak} <span className="text-xs font-semibold text-muted-foreground">Days active</span>
+            {streak.current} <span className="text-xs font-semibold text-muted-foreground">Days active</span>
           </p>
+          {streak.longest > 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              Best: <span className="font-semibold text-foreground">{streak.longest}</span> days
+            </p>
+          )}
         </div>
 
-        {/* Streak dots grid */}
+        {/* Streak dots grid (14 days) */}
         <div className="grid grid-cols-7 gap-1">
-          {calendarDots.map((dot, idx) => (
+          {consistencyDots.map((dot, idx) => (
             <div
               key={idx}
-              title={`${dot.dateStr}: ${dot.isSolved ? "Solved" : "Not solved"}`}
+              title={`${dot.date}: ${dot.count > 0 ? `${dot.count} solved` : "No solves"}`}
               className={`size-3 rounded-sm border flex items-center justify-center text-[7px] font-bold ${
-                dot.isSolved
+                dot.count > 0
                   ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:bg-emerald-500/20"
                   : "bg-muted/30 border-border text-transparent"
               }`}
@@ -242,7 +242,7 @@ export function LearningProgress({ solvedCount, totalCount, streaks }: LearningP
         <div className="text-[10px] text-muted-foreground flex items-center justify-between">
           <span>14-day history</span>
           <span className="font-semibold text-foreground flex items-center gap-0.5">
-            <Sparkles className="size-3 text-amber-500" /> 1 freeze safe
+            <Sparkles className="size-3 text-amber-500" /> {streak.longest > streak.current ? "Keep going!" : "On fire!"}
           </span>
         </div>
       </div>
