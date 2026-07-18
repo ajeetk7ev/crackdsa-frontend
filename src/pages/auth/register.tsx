@@ -14,7 +14,7 @@ export function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [agree, setAgree] = useState(false);
+  // const [agree, setAgree] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const notification = useNotificationStore();
@@ -26,10 +26,10 @@ export function RegisterPage() {
     e.preventDefault();
     setFieldErrors({});
 
-    if (!agree) {
-      notification.error("You must agree to the Terms of Service to continue.");
-      return;
-    }
+    // if (!agree) {
+    //   notification.error("You must agree to the Terms of Service to continue.");
+    //   return;
+    // }
 
     setIsSubmitting(true);
     try {
@@ -174,11 +174,11 @@ export function RegisterPage() {
             onChange={(e) => setRememberMe(e.target.checked)}
             label="Keep me logged in for 30 days"
           />
-          <Checkbox
+          {/* <Checkbox
             checked={agree}
             onChange={(e) => setAgree(e.target.checked)}
             label="I accept the Terms and privacy policies."
-          />
+          /> */}
         </div>
 
         <Button
