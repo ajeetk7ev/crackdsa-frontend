@@ -535,7 +535,7 @@ export function RevisionPage() {
                               <img
                                 src={leetcodeLogo}
                                 alt="LeetCode"
-                                className="size-4 dark:invert object-contain"
+                                className="size-6 object-contain"
                               />
                             </button>
                           </td>
@@ -749,7 +749,7 @@ export function RevisionPage() {
         onClose={() => setPomodoroPromptProblem(null)}
         problemId={pomodoroPromptProblem?.id || null}
         problemTitle={pomodoroPromptProblem?.title || null}
-        problemDifficulty={pomodoroPromptProblem?.difficulty || "Medium"}
+        difficulty={pomodoroPromptProblem?.difficulty || "Medium"}
         leetcodeUrl={pomodoroPromptProblem?.leetcodeUrl || ""}
       />
 

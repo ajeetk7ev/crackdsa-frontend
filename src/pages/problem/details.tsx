@@ -389,7 +389,7 @@ export function ProblemDetailsPage() {
         )}
 
         {/* Quick reschedule controls (only show if SRS is active) */}
-        {hasSRS && statusLabel !== "Mastered" && (
+        {/* {hasSRS && statusLabel !== "Mastered" && (
           <div className="border-t border-border pt-4 space-y-3">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Reschedule Next Revision
@@ -416,7 +416,7 @@ export function ProblemDetailsPage() {
               </div>
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* 4. Main Content Grid */}

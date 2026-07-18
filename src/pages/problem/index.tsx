@@ -548,7 +548,7 @@ export function ProblemsPage() {
                           <img
                             src={leetcodeLogo}
                             alt="LeetCode"
-                            className="size-4 dark:invert object-contain"
+                            className="size-6 object-contain"
                           />
                         </button>
                       </td>
