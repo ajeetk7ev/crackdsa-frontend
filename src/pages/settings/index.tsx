@@ -18,7 +18,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SettingsTab = "profile" | "password" | "preferences" | "notifications" | "danger";
+import { api } from "@/lib/axios";
+
+type SettingsTab = "profile" | "password" | "danger";
 
 export function SettingsPage() {
   const authUser = useAuthStore((state) => state.user);
@@ -37,22 +39,17 @@ export function SettingsPage() {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [leetcodeUser, setLeetcodeUser] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
 
   // Password States Binds
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Preferences States Binds
-  const [editorTheme, setEditorTheme] = useState("one-dark");
-  const [defaultLang, setDefaultLang] = useState("cpp");
-  const [reviewStrategy, setReviewStrategy] = useState("sm2");
-
-  // Notifications States Binds
-  const [dailyStreak, setDailyStreak] = useState(true);
-  const [revisionReminder, setRevisionReminder] = useState(true);
-  const [weeklyReport, setWeeklyReport] = useState(true);
-  const [monthlyReport, setMonthlyReport] = useState(false);
+  // Saving states
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   // Modal Dialog states
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -67,43 +64,47 @@ export function SettingsPage() {
       setUsername(authUser.username || "");
       setBio(authUser.bio || "");
       setLeetcodeUser(authUser.leetcodeUsername || "");
-
-      // Load custom preferences
-      setEditorTheme(authUser.preferences?.theme || "one-dark");
-      setDefaultLang("cpp");
-      setReviewStrategy(authUser.preferences?.revisionStrategy || "sm2");
-
-      // Notifications Binds
-      setDailyStreak(!!authUser.notifications?.streakReminder);
-      setRevisionReminder(!!authUser.notifications?.revisionReminder);
-      setWeeklyReport(!!authUser.notifications?.weeklyReport);
-      setMonthlyReport(!!authUser.notifications?.monthlyReport);
+      setAvatarPreview(authUser.avatar || "");
     }
   }, [authUser]);
 
   // 1. Update Profile Settings
   const handleSaveProfile = async () => {
     if (!firstName.trim() || !lastName.trim() || !username.trim()) {
-      addToast("First Name, Last Name, and Username cannot be empty.", "warning");
+      addToast("First Name, Last Name, and Username are required.", "warning");
       return;
     }
 
     try {
-      await updateProfile({
-        firstname: firstName.trim(),
-        lastname: lastName.trim(),
-        username: username.trim(),
-        bio: bio.trim(),
-        leetcodeUsername: leetcodeUser.trim(),
+      setSavingProfile(true);
+      const formData = new FormData();
+      formData.append("firstname", firstName.trim());
+      formData.append("lastname", lastName.trim());
+      formData.append("username", username.trim());
+      formData.append("bio", bio.trim());
+      formData.append("leetcodeUsername", leetcodeUser.trim());
+      if (avatarFile) {
+        formData.append("avatar", avatarFile);
+      }
+
+      const response = await api.put("/auth/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
+
+      // Update auth store user context
+      useAuthStore.getState().setUser(response.data.data.user);
       addToast("Profile settings saved successfully.", "success");
-    } catch {
-      addToast("Failed to update profile settings.", "error");
+      setAvatarFile(null);
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Failed to update profile settings.";
+      addToast(errorMsg, "error");
+    } finally {
+      setSavingProfile(false);
     }
   };
 
   // 2. Change Password Binds
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       addToast("Please fill in all password fields.", "warning");
       return;
@@ -117,92 +118,57 @@ export function SettingsPage() {
       return;
     }
 
-    // Success Mock Trigger
-    addToast("Password changed successfully.", "success");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-  };
-
-  // 3. Save Custom Preferences Theme & Code settings
-  const handleSavePreferences = async () => {
     try {
-      await updateProfile({
-        preferences: {
-          theme: editorTheme as any,
-          revisionStrategy: reviewStrategy as any,
-          revisionSchedule: authUser?.preferences?.revisionSchedule || [1, 3, 7, 30],
-          pomodoro: authUser?.preferences?.pomodoro || { focusTime: 25, breakTime: 5, longBreakTime: 15 }
-        }
+      setSavingPassword(true);
+      await api.put("/auth/change-password", {
+        currentPassword,
+        newPassword
       });
-      addToast("Preferences saved successfully.", "success");
-    } catch {
-      addToast("Failed to save preferences.", "error");
+      addToast("Password changed successfully.", "success");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Failed to change password.";
+      addToast(errorMsg, "error");
+    } finally {
+      setSavingPassword(false);
     }
   };
 
-  // 4. Save Notifications preferences
-  const handleSaveNotifications = async () => {
+  // 3. Reset All Progress
+  const handleResetProgress = async () => {
     try {
-      await updateProfile({
-        notifications: {
-          streakReminder: dailyStreak,
-          revisionReminder: revisionReminder,
-          weeklyReport: weeklyReport,
-          monthlyReport: monthlyReport,
-        }
-      });
-      addToast("Notification preferences updated.", "success");
-    } catch {
-      addToast("Failed to update notification preferences.", "error");
+      await api.delete("/progress/reset");
+      addToast("All solve progress logs reset successfully.", "success");
+      setIsResetOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Failed to reset progress.";
+      addToast(errorMsg, "error");
     }
   };
 
-  // 5. Reset All Progress (keeping login details)
-  const handleResetProgress = () => {
-    setIsResetOpen(false);
-    localStorage.removeItem("mock_submissions");
-    localStorage.removeItem("mock_revisions");
-    localStorage.removeItem("mock_streaks");
-    localStorage.removeItem("mock_notes");
-    localStorage.removeItem("today_goal_problems");
-    addToast("All workspace solve progress logs reset successfully.", "success");
-    window.location.reload();
-  };
-
-  // 6. Delete Account permanently
-  const handleDeleteAccount = () => {
+  // 4. Delete Account permanently
+  const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "delete my account") {
       addToast("Please type the confirmation phrase exactly.", "warning");
       return;
     }
-    setIsDeleteOpen(false);
-    addToast("Account deleted successfully. We hope to see you back!", "info");
-    
-    // Clear storage database indices
-    localStorage.removeItem("crackdsa-token");
-    localStorage.removeItem("crackdsa-user");
-    localStorage.removeItem("mock_submissions");
-    localStorage.removeItem("mock_revisions");
-    localStorage.removeItem("mock_collections");
-    localStorage.removeItem("mock_streaks");
-    localStorage.removeItem("mock_notes");
-    localStorage.removeItem("today_goal_problems");
-    localStorage.removeItem("profile_first_name");
-    localStorage.removeItem("profile_last_name");
-    localStorage.removeItem("profile_name");
-    localStorage.removeItem("profile_username");
-    localStorage.removeItem("profile_bio");
-    localStorage.removeItem("profile_leetcode_username");
-    
-    logout();
+    try {
+      await api.delete("/auth/delete-account");
+      addToast("Account deleted successfully. We hope to see you back!", "info");
+      setIsDeleteOpen(false);
+      logout();
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Failed to delete account.";
+      addToast(errorMsg, "error");
+    }
   };
 
   const tabsList = [
     { id: "profile", label: "Profile", icon: UserIcon },
     { id: "password", label: "Password", icon: Lock },
-    { id: "preferences", label: "Preferences", icon: Paintbrush },
-    { id: "notifications", label: "Notifications", icon: Bell },
     { id: "danger", label: "Danger Zone", icon: Trash2 },
   ] as const;
 
@@ -215,7 +181,7 @@ export function SettingsPage() {
           Account Settings
         </Typography>
         <Typography variant="muted">
-          Configure profile details, theme visual styles, and spacing reminders.
+          Configure profile details, credentials safety, and account state settings.
         </Typography>
       </div>
 
@@ -257,16 +223,41 @@ export function SettingsPage() {
                 <p className="text-xs text-muted-foreground mt-0.5">Settings visible on achievements cards and dashboards.</p>
               </div>
 
-              {/* Avatar simulated view */}
+              {/* Avatar file upload */}
               <div className="flex items-center gap-4 py-2 border-b border-border/40 pb-4">
-                <div className="size-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-2xl uppercase select-none">
-                  {firstName?.[0] || "A"}
-                </div>
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="profile image"
+                    className="size-16 rounded-full object-cover border border-border"
+                  />
+                ) : (
+                  <div className="size-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-2xl uppercase select-none">
+                    {firstName?.[0] || "A"}
+                  </div>
+                )}
                 <div className="space-y-1">
-                  <Button variant="outline" size="xs" onClick={() => addToast("Profile picture uploads connected in Phase 10.", "info")} className="text-[10px] h-7 cursor-pointer shadow-sm">
+                  <input
+                    type="file"
+                    id="avatar-upload"
+                    accept="image/png, image/jpeg, image/jpg"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setAvatarFile(e.target.files[0]);
+                        setAvatarPreview(URL.createObjectURL(e.target.files[0]));
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => document.getElementById("avatar-upload")?.click()}
+                    className="text-[10px] h-7 cursor-pointer shadow-sm"
+                  >
                     Update Profile Picture
                   </Button>
-                  <p className="text-[10px] text-muted-foreground">Supported file formats: PNG, JPEG up to 2MB.</p>
+                  <p className="text-[10px] text-muted-foreground">Supported formats: PNG, JPEG up to 5MB.</p>
                 </div>
               </div>
 
@@ -345,8 +336,8 @@ export function SettingsPage() {
               </div>
 
               <div className="pt-2">
-                <Button onClick={handleSaveProfile} className="text-xs px-5 shadow-sm cursor-pointer">
-                  Save Profile Details
+                <Button onClick={handleSaveProfile} disabled={savingProfile} className="text-xs px-5 shadow-sm cursor-pointer">
+                  {savingProfile ? "Saving Profile..." : "Save Profile Details"}
                 </Button>
               </div>
             </div>
@@ -403,172 +394,15 @@ export function SettingsPage() {
                 </div>
 
                 <div className="pt-2">
-                  <Button onClick={handleChangePassword} className="text-xs px-5 shadow-sm cursor-pointer">
-                    Change Password
+                  <Button onClick={handleChangePassword} disabled={savingPassword} className="text-xs px-5 shadow-sm cursor-pointer">
+                    {savingPassword ? "Changing..." : "Change Password"}
                   </Button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* C. PREFERENCES TAB CONFIGURATIONS */}
-          {activeTab === "preferences" && (
-            <div className="space-y-6 max-w-xl text-left">
-              <div>
-                <Typography variant="title" className="text-foreground">
-                  🎨 App Preferences & Style Customizations
-                </Typography>
-                <p className="text-xs text-muted-foreground mt-0.5">Customize default coding languages, editor themes, and appearance.</p>
-              </div>
-
-              {/* Theme customizer */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                  Theme Appearance:
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setTheme("light")}
-                    className={cn(
-                      "p-4 rounded-xl border flex flex-col items-center justify-center gap-3 transition-all cursor-pointer shadow-sm",
-                      theme === "light"
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border bg-background hover:bg-muted/40"
-                    )}
-                  >
-                    <div className="size-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-zinc-800 text-sm">
-                      ☀️
-                    </div>
-                    <span className="text-xs font-semibold">Light Mode</span>
-                  </button>
-
-                  <button
-                    onClick={() => setTheme("dark")}
-                    className={cn(
-                      "p-4 rounded-xl border flex flex-col items-center justify-center gap-3 transition-all cursor-pointer shadow-sm",
-                      theme === "dark"
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border bg-background hover:bg-muted/40"
-                    )}
-                  >
-                    <div className="size-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-100 text-sm">
-                      🌙
-                    </div>
-                    <span className="text-xs font-semibold">Dark Mode</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Code settings */}
-              <div className="space-y-4 pt-2 border-t border-border/40">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                      Preferred Language:
-                    </label>
-                    <select
-                      value={defaultLang}
-                      onChange={(e) => setDefaultLang(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none text-foreground outline-none"
-                    >
-                      <option value="cpp">C++ (GCC 17)</option>
-                      <option value="java">Java (JDK 17)</option>
-                      <option value="python">Python (3.10)</option>
-                      <option value="javascript">JavaScript (ES6)</option>
-                      <option value="go">Go (1.20)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                      Editor Theme:
-                    </label>
-                    <select
-                      value={editorTheme}
-                      onChange={(e) => setEditorTheme(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none text-foreground outline-none"
-                    >
-                      <option value="one-dark">One Dark Pro</option>
-                      <option value="vs-dark">VS Code Dark</option>
-                      <option value="monokai">Monokai Retro</option>
-                      <option value="github-light">Github Light Contrast</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    SRS Revision Strategy:
-                  </label>
-                  <select
-                    value={reviewStrategy}
-                    onChange={(e) => setReviewStrategy(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none text-foreground outline-none"
-                  >
-                    <option value="sm2">Standard SM-2 (Algorithm Spaced Repetition)</option>
-                    <option value="balanced">Balanced Curation (Streaks + Active Recalls)</option>
-                    <option value="cram">Short-Term Cramming (Rapid revision iterations)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Button onClick={handleSavePreferences} className="text-xs px-5 shadow-sm cursor-pointer">
-                  Save App Preferences
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* D. NOTIFICATIONS TAB CONFIGURATIONS */}
-          {activeTab === "notifications" && (
-            <div className="space-y-6 max-w-xl">
-              <div>
-                <Typography variant="title" className="text-foreground">
-                  🔔 Push & Email Notifications
-                </Typography>
-                <p className="text-xs text-muted-foreground mt-0.5">Configure spaced-repetition timing reminders.</p>
-              </div>
-
-              <div className="space-y-4">
-                <Checkbox
-                  checked={dailyStreak}
-                  onChange={(e) => setDailyStreak(e.target.checked)}
-                  label="Daily Streak Safety Reminders"
-                />
-                <p className="text-[10px] text-muted-foreground pl-6 -mt-3">Notify me if streak count flags are due to expire in 4 hours.</p>
-
-                <Checkbox
-                  checked={revisionReminder}
-                  onChange={(e) => setRevisionReminder(e.target.checked)}
-                  label="Daily Spaced Revisions Notification"
-                />
-                <p className="text-[10px] text-muted-foreground pl-6 -mt-3">Pings alert notifications listing problems scheduled for revision today.</p>
-
-                <Checkbox
-                  checked={weeklyReport}
-                  onChange={(e) => setWeeklyReport(e.target.checked)}
-                  label="Weekly SDE Performance Report"
-                />
-                <p className="text-[10px] text-muted-foreground pl-6 -mt-3">Curate weekly statistics summaries of accuracy and playlists checks.</p>
-
-                <Checkbox
-                  checked={monthlyReport}
-                  onChange={(e) => setMonthlyReport(e.target.checked)}
-                  label="Monthly Consistency Newsletter digest"
-                />
-                <p className="text-[10px] text-muted-foreground pl-6 -mt-3">Monthly digests calculating global percentile tier jumps.</p>
-
-                <div className="pt-2 border-t border-border/40">
-                  <Button onClick={handleSaveNotifications} className="text-xs px-5 shadow-sm cursor-pointer">
-                    Save Notification Binds
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* E. DANGER ZONE TAB */}
+          {/* C. DANGER ZONE TAB */}
           {activeTab === "danger" && (
             <div className="space-y-6 max-w-xl text-left">
               <div>
