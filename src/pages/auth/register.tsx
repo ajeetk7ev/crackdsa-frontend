@@ -102,7 +102,7 @@ export function RegisterPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1 text-left">
             <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              First Name
+              First Name <span className="text-destructive">*</span>
             </Typography>
             <Input
               placeholder="Alex"
@@ -119,7 +119,7 @@ export function RegisterPage() {
 
           <div className="space-y-1 text-left">
             <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Last Name
+              Last Name <span className="text-destructive">*</span>
             </Typography>
             <Input
               placeholder="Miller"
@@ -137,7 +137,7 @@ export function RegisterPage() {
 
         <div className="space-y-1 text-left">
           <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-            Email Address
+            Email Address <span className="text-destructive">*</span>
           </Typography>
           <Input
             placeholder="alex@developer.com"
@@ -154,7 +154,7 @@ export function RegisterPage() {
 
         <div className="space-y-1 text-left">
           <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-            Password
+            Password <span className="text-destructive">*</span>
           </Typography>
           <PasswordInput
             placeholder="At least 8 characters"

@@ -41,7 +41,7 @@ export function PublicLayout() {
                   </Link>
                   <Link
                     to="/signup"
-                    className="text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/95 px-3.5 py-1.5 rounded-lg transition-colors shadow-sm"
+                    className=" hidden sm:block text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/95 px-3.5 py-1.5 rounded-lg transition-colors shadow-sm"
                   >
                     Get Started
                   </Link>

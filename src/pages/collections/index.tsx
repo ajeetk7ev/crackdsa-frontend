@@ -76,6 +76,7 @@ export function CollectionsPage() {
   const [activeNoteProblemId, setActiveNoteProblemId] = useState<string | null>(null);
   const [activeNoteText, setActiveNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [savingCollection, setSavingCollection] = useState(false);
 
   // Status Modal & Pomodoro state
   const [statusModalProblem, setStatusModalProblem] = useState<{ id: string; title: string } | null>(null);
@@ -126,6 +127,7 @@ export function CollectionsPage() {
       return;
     }
 
+    setSavingCollection(true);
     try {
       await api.post("/collections", {
         name: newColName,
@@ -141,6 +143,8 @@ export function CollectionsPage() {
       loadCollectionsData();
     } catch {
       addToast("Failed to create collection.", "error");
+    } finally {
+      setSavingCollection(false);
     }
   };
 
@@ -148,6 +152,7 @@ export function CollectionsPage() {
   const handleRenameCollection = async () => {
     if (!renameName.trim() || !activeCollectionId) return;
 
+    setSavingCollection(true);
     try {
       await api.put(`/collections/${activeCollectionId}`, { name: renameName });
       addToast("Collection renamed successfully.", "success");
@@ -155,6 +160,8 @@ export function CollectionsPage() {
       loadCollectionsData();
     } catch {
       addToast("Failed to rename collection.", "error");
+    } finally {
+      setSavingCollection(false);
     }
   };
 
@@ -772,13 +779,14 @@ export function CollectionsPage() {
         <div className="space-y-4 text-left">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Playlist Name:
+              Playlist Name <span className="text-destructive">*</span>
             </label>
             <input
               type="text"
               placeholder="e.g. Blind 75, Graph Master"
               value={newColName}
               onChange={(e) => setNewColName(e.target.value)}
+              disabled={savingCollection}
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
             />
           </div>
@@ -791,6 +799,7 @@ export function CollectionsPage() {
               placeholder="Write target roadmap descriptions..."
               value={newColDesc}
               onChange={(e) => setNewColDesc(e.target.value)}
+              disabled={savingCollection}
               className="text-xs h-20"
             />
           </div>
@@ -801,6 +810,7 @@ export function CollectionsPage() {
               id="col_is_public"
               checked={newColPublic}
               onChange={(e) => setNewColPublic(e.target.checked)}
+              disabled={savingCollection}
               className="size-3.5 accent-indigo-500 cursor-pointer"
             />
             <label htmlFor="col_is_public" className="text-xs text-muted-foreground cursor-pointer select-none">
@@ -809,11 +819,11 @@ export function CollectionsPage() {
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-            <Button variant="outline" size="sm" onClick={() => setIsCreateOpen(false)} className="text-xs cursor-pointer">
+            <Button variant="outline" size="sm" onClick={() => setIsCreateOpen(false)} disabled={savingCollection} className="text-xs cursor-pointer">
               Cancel
             </Button>
-            <Button onClick={handleCreateCollection} size="sm" className="text-xs cursor-pointer shadow-sm">
-              Create Collection
+            <Button onClick={handleCreateCollection} disabled={savingCollection} size="sm" className="text-xs cursor-pointer shadow-sm">
+              {savingCollection ? "Creating..." : "Create Collection"}
             </Button>
           </div>
         </div>
@@ -829,21 +839,22 @@ export function CollectionsPage() {
         <div className="space-y-4 text-left">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              New Playlist Name:
+              New Playlist Name <span className="text-destructive">*</span>
             </label>
             <input
               type="text"
               value={renameName}
               onChange={(e) => setRenameName(e.target.value)}
+              disabled={savingCollection}
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setIsRenameOpen(false)} className="text-xs cursor-pointer">
+            <Button variant="outline" size="sm" onClick={() => setIsRenameOpen(false)} disabled={savingCollection} className="text-xs cursor-pointer">
               Cancel
             </Button>
-            <Button onClick={handleRenameCollection} size="sm" className="text-xs cursor-pointer shadow-sm">
-              Save Changes
+            <Button onClick={handleRenameCollection} disabled={savingCollection} size="sm" className="text-xs cursor-pointer shadow-sm">
+              {savingCollection ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </div>

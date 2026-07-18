@@ -44,9 +44,7 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
         </button>
 
         <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-sm font-medium">
-          <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-            Home
-          </Link>
+         
           {pathnames.map((segment, index) => {
             const path = `/${pathnames.slice(0, index + 1).join("/")}`;
             const isLast = index === pathnames.length - 1;
@@ -81,7 +79,7 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
         </button>
 
         {/* Notifications Alert Dropdown */}
-        <div className="relative">
+        {/* <div className="relative"> */}
           <button
             onClick={() => setShowNotifications((prev) => !prev)}
             className="relative p-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all cursor-pointer shadow-sm"
@@ -124,7 +122,7 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
               </div>
             </>
           )}
-        </div>
+        {/* </div> */}
 
         {/* Profile Avatar Dropdown */}
         <div className="relative">

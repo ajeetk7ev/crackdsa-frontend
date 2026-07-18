@@ -26,6 +26,7 @@ import {
   Crown,
   Clock,
   Flame,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export function ProblemsPage() {
   const [statusModalProblem, setStatusModalProblem] = useState<{ id: string; title: string } | null>(null);
   const [pomodoroPromptProblem, setPomodoroPromptProblem] = useState<{ id: string; title: string; difficulty: string; leetcodeUrl: string } | null>(null);
   const [savingNote, setSavingNote] = useState(false);
+  const [goalIds, setGoalIds] = useState<string[]>([]);
 
   const addToast = useNotificationStore((state: any) => state.addToast);
 
@@ -81,26 +83,54 @@ export function ProblemsPage() {
   const loadExplorerData = async () => {
     try {
       setLoading(true);
-      const probRes = await api.get("/problems", {
-        params: {
-          page: currentPage,
-          limit: pageSize,
-          difficulty: filterDifficulty,
-          search: searchQuery,
-          status: filterStatus,
-          sort: sortBy
-        }
-      });
-      const progRes = await api.get("/progress");
+      const [probRes, progRes, goalRes] = await Promise.all([
+        api.get("/problems", {
+          params: {
+            page: currentPage,
+            limit: pageSize,
+            difficulty: filterDifficulty,
+            search: searchQuery,
+            status: filterStatus,
+            sort: sortBy
+          }
+        }),
+        api.get("/progress"),
+        api.get("/goals/today").catch(() => null)
+      ]);
 
       setProblems(probRes.data.data.problems);
       setTotalItems(probRes.data.data.pagination.total);
       setTotalPages(probRes.data.data.pagination.totalPages);
       setProgressList(progRes.data.data);
+      if (goalRes) {
+        setGoalIds(goalRes.data.data.problemIds);
+      }
     } catch {
       addToast("Failed to fetch problems directory records.", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoalToggle = async (probId: string) => {
+    let newGoals: string[];
+    const isGoal = goalIds.includes(probId);
+    if (isGoal) {
+      newGoals = goalIds.filter((id) => id !== probId);
+    } else {
+      if (goalIds.length >= 8) {
+        addToast("We recommend focusing on up to 8 goals per day to prevent burn out.", "warning");
+        return;
+      }
+      newGoals = [...goalIds, probId];
+    }
+    
+    try {
+      const res = await api.post("/goals/today", { problems: newGoals });
+      setGoalIds(res.data.data.problemIds);
+      addToast(isGoal ? "Removed from today's goals." : "Added to today's goals.", "success");
+    } catch {
+      addToast("Failed to update today's goals.", "error");
     }
   };
 
@@ -568,6 +598,15 @@ export function ProblemsPage() {
                             title={isBook ? "Remove Bookmark" : "Add Bookmark"}
                           >
                             <Bookmark className={cn("size-4", isBook ? "text-amber-500 fill-amber-500 border-amber-500" : "")} />
+                          </button>
+
+                          {/* Goal Target */}
+                          <button
+                            onClick={() => handleGoalToggle(prob.id)}
+                            className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer"
+                            title={goalIds.includes(prob.id) ? "Remove from Today's Goals" : "Add to Today's Goals"}
+                          >
+                            <Target className={cn("size-4", goalIds.includes(prob.id) ? "text-rose-500 fill-rose-500/10" : "")} />
                           </button>
                           
                           {/* Add Note */}

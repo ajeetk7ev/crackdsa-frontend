@@ -95,7 +95,7 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1 text-left">
           <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-            Email Address
+            Email Address <span className="text-destructive">*</span>
           </Typography>
           <Input
             placeholder="alex@developer.com"
@@ -113,14 +113,14 @@ export function LoginPage() {
         <div className="space-y-1 text-left">
           <div className="flex items-center justify-between">
             <Typography variant="subtitle" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Password
+              Password <span className="text-destructive">*</span>
             </Typography>
-            <Link
+           {/*  <Link
               to="/forgot-password"
               className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               Forgot password?
-            </Link>
+            </Link> */}
           </div>
           <PasswordInput
             placeholder="••••••••"

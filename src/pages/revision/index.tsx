@@ -331,65 +331,151 @@ export function RevisionPage() {
         </Typography>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         
-        {/* Left Column (2/3 width) - Today's Mission & Queue Table */}
-        <div className="md:col-span-2 space-y-6">
-          
-          {/* SECTION 1: TODAY'S MISSION HERO CARD */}
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="space-y-2">
-              <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">
-                Today's Mission
+        {/* SECTION 1: TODAY'S MISSION HERO CARD */}
+        <div className="col-span-full lg:col-span-2 order-1 p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">
+              Today's Mission
+            </span>
+            <Typography variant="h2" className="font-semibold text-foreground">
+              Today's Revision Queue
+            </Typography>
+            
+            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-1">
+              <span className="font-semibold text-foreground">{stats.dueTodayCount} Problems Due</span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <Clock className="size-3 text-indigo-500" /> Est: {estTimeStr}
               </span>
-              <Typography variant="h2" className="font-semibold text-foreground">
-                Today's Revision Queue
+              <span>•</span>
+              <span className="space-x-2">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Easy {difficultyBreakdown.Easy}</span>
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">Medium {difficultyBreakdown.Medium}</span>
+                <span className="text-rose-600 dark:text-rose-400 font-semibold">Hard {difficultyBreakdown.Hard}</span>
+              </span>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleStartRevising}
+            disabled={stats.dueTodayCount === 0}
+            variant="default"
+            className="h-10 px-6 cursor-pointer shadow-sm shrink-0"
+          >
+            Start Revising
+          </Button>
+        </div>
+
+        {/* SECTION 2: TODAY'S REVISION PROGRESS BAR */}
+        <div className="col-span-full lg:col-span-2 order-2 lg:order-3 p-6 rounded-xl border border-border bg-card shadow-sm space-y-3">
+          <div className="flex justify-between items-baseline text-xs">
+            <span className="font-bold text-muted-foreground uppercase">Today's Progress</span>
+            <span className="font-semibold text-foreground">
+              {stats.completedTodayCount} / {totalTodayTasks} Revised ({progressPercent}%)
+            </span>
+          </div>
+          
+          {/* Progress bar line */}
+          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-300 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* SECTION 8: MOTIVATION ALERTS CARD */}
+        <div className="col-span-full lg:col-span-1 order-3 lg:order-2 p-6 rounded-xl border border-border bg-card shadow-sm text-center space-y-3 relative overflow-hidden flex flex-col justify-center">
+          <div className="size-10 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-xl">
+            🔥
+          </div>
+          
+          {stats.dueTodayCount > 0 ? (
+            <div className="space-y-1">
+              <Typography variant="title" className="text-foreground block font-semibold">
+                Keep the Momentum Going!
               </Typography>
-              
-              <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-1">
-                <span className="font-semibold text-foreground">{stats.dueTodayCount} Problems Due</span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <Clock className="size-3 text-indigo-500" /> Est: {estTimeStr}
-                </span>
-                <span>•</span>
-                <span className="space-x-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Easy {difficultyBreakdown.Easy}</span>
-                  <span className="text-amber-600 dark:text-amber-400 font-semibold">Medium {difficultyBreakdown.Medium}</span>
-                  <span className="text-rose-600 dark:text-rose-400 font-semibold">Hard {difficultyBreakdown.Hard}</span>
+              <p className="text-xs text-muted-foreground">
+                Only <span className="font-bold text-foreground">{stats.dueTodayCount} problems</span> left to revise today. Complete them to safeguard your consistency streak.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Typography variant="title" className="text-emerald-600 dark:text-emerald-400 block font-semibold">
+                Today's Revision Completed
+              </Typography>
+              <p className="text-xs text-muted-foreground">
+                Great job! You have cleared today's spaced recall queue. Solve new challenges to build memory index lists.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* SECTION 6: UPCOMING REVISIONS FORECAST */}
+        <div className="col-span-full lg:col-span-1 order-4 p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+          <div className="border-b border-border pb-3">
+            <Typography variant="title" className="text-foreground block font-semibold">
+              Upcoming Revision Forecast
+            </Typography>
+          </div>
+          
+          <div className="space-y-3">
+            {[
+              { label: "Tomorrow", count: forecastCounts.tomorrow },
+              { label: "This Week", count: forecastCounts.thisWeek },
+              { label: "Next Month", count: forecastCounts.nextMonth },
+            ].map((item) => (
+              <div key={item.label} className="flex justify-between items-center text-xs p-2.5 rounded bg-background border border-border">
+                <span className="font-semibold text-muted-foreground">{item.label}</span>
+                <span className="font-bold text-foreground bg-muted px-2 py-0.5 rounded-full">
+                  {item.count} {item.count === 1 ? "problem" : "problems"}
                 </span>
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
 
-            <Button
-              onClick={handleStartRevising}
-              disabled={stats.dueTodayCount === 0}
-              variant="default"
-              className="h-10 px-6 cursor-pointer shadow-sm shrink-0"
-            >
-              Start Revising
-            </Button>
+        {/* SECTION 7: REVISION STATISTICS (TINY STATS) */}
+        <div className="col-span-full lg:col-span-1 order-5 p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+          <div className="border-b border-border pb-3 flex items-center justify-between">
+            <Typography variant="title" className="text-foreground font-semibold">
+              Recall Statistics
+            </Typography>
+            <TrendingUp className="size-4 text-emerald-500" />
           </div>
 
-          {/* SECTION 2: TODAY'S REVISION PROGRESS BAR */}
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-3">
-            <div className="flex justify-between items-baseline text-xs">
-              <span className="font-bold text-muted-foreground uppercase">Today's Progress</span>
-              <span className="font-semibold text-foreground">
-                {stats.completedTodayCount} / {totalTodayTasks} Revised ({progressPercent}%)
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Today's Accuracy</span>
+              <span className="text-sm font-semibold text-foreground">{todayAccuracy}</span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Completed Solves</span>
+              <span className="text-sm font-semibold text-foreground">{stats.recallStats.completedSolves}</span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Current Streak</span>
+              <span className="text-sm font-semibold text-foreground flex items-center gap-0.5">
+                <Flame className="size-3.5 text-amber-500 fill-amber-500/10" /> {activeStreak} Days
               </span>
             </div>
-            
-            {/* Progress bar line */}
-            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-300 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
+
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Mastered Items</span>
+              <span className="text-sm font-semibold text-foreground flex items-center gap-0.5">
+                <Sparkles className="size-3.5 text-purple-500 fill-purple-500/10" /> {masteredCount} Items
+              </span>
             </div>
           </div>
+        </div>
 
-          {/* SECTION 4: SELECT DROPDOWN FILTERS */}
+        {/* SECTION 4: SELECT DROPDOWN FILTERS & SECTION 3: REVISION QUEUE DATA TABLE (Unified into a single layout section) */}
+        <div className="col-span-full lg:col-span-2 order-6 space-y-6">
+          
           <div className="flex flex-col sm:flex-row gap-3 border-b border-border pb-4">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider shrink-0 select-none">
@@ -441,9 +527,10 @@ export function RevisionPage() {
             )}
           </div>
 
-          {/* SECTION 3: REVISION QUEUE DATA TABLE (Redesigned to match Explorer) */}
           <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden text-left">
-            <div className="overflow-y-auto max-h-[calc(100vh-320px)] overflow-x-auto">
+            
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-y-auto max-h-[calc(100vh-320px)] overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b border-border text-xs font-semibold text-muted-foreground select-none">
@@ -584,7 +671,7 @@ export function RevisionPage() {
 
                               {/* Redirect to Problem Details page */}
                               <Link
-                                to={`/problems/${item.problemId}`}
+                                  to={`/problems/${item.problemId}`}
                                 className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer inline-flex items-center"
                                 title="Open Spaced Repetition Workspace"
                               >
@@ -600,11 +687,151 @@ export function RevisionPage() {
               </table>
             </div>
 
+            {/* Mobile/Tablet Cards List View */}
+            <div className="lg:hidden divide-y divide-border overflow-y-auto max-h-[calc(100vh-320px)]">
+              {processedQueue.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground">
+                  <XCircleWidget status={statusFilter} />
+                </div>
+              ) : (
+                processedQueue.map((item) => {
+                  const prog = progressList.find((p) => p.problemId === item.problemId);
+                  const stat = getProblemStatusDot(item.problemId);
+                  const isBook = item.isBookmarked;
+                  const hasNote = item.note && item.note.trim().length > 0;
+                  
+                  const nextReviewTime = new Date(item.nextReviewDate).getTime();
+                  const isDue = nextReviewTime <= Date.now();
+                  const isOverdue = nextReviewTime < Date.now() - 24 * 3600 * 1000;
+                  
+                  let reviewDateStr = "-";
+                  if (prog && prog.status === "Mastered") {
+                    reviewDateStr = "👑 Mastered";
+                  } else if (item.status === "completed") {
+                    reviewDateStr = "Done";
+                  } else if (isOverdue) {
+                    reviewDateStr = "Overdue";
+                  } else if (isDue) {
+                    reviewDateStr = "Due Today";
+                  } else {
+                    reviewDateStr = new Date(item.nextReviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                  }
+
+                  return (
+                    <div key={item.id} className="p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-left min-w-0">
+                          <span className="text-[10px] text-muted-foreground font-mono">#{item.problemId}</span>
+                          <Link
+                            to={`/problems/${item.problemId}`}
+                            className="font-semibold text-sm text-foreground hover:text-primary-hover hover:underline transition-colors truncate"
+                          >
+                            {item.problemTitle}
+                          </Link>
+                        </div>
+                        <span className={cn("text-[10px] font-semibold rounded-full px-2 py-0.5 border shrink-0", difficultyColors[item.difficulty])}>
+                          {item.difficulty}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div>Topic: <span className="text-foreground font-medium">{item.topic}</span></div>
+                        <div>Repetition: <span className="text-foreground font-semibold">{getRevisionBadge(item.repetitions)}</span></div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs border-t border-border/40 pt-2 text-left">
+                        <div>
+                          <span className="text-muted-foreground block text-[9px] uppercase tracking-wider font-semibold">Last Solved</span>
+                          <span className="text-foreground font-medium">{getLastRevisedLabel(item.problemId)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-muted-foreground block text-[9px] uppercase tracking-wider font-semibold">Due Date</span>
+                          <span className={cn(
+                            "font-semibold",
+                            reviewDateStr === "👑 Mastered" ? "text-purple-600 dark:text-purple-400" :
+                            reviewDateStr === "Overdue" ? "text-rose-500 animate-pulse font-semibold" :
+                            reviewDateStr === "Due Today" ? "text-amber-500 font-semibold" :
+                            reviewDateStr === "Done" ? "text-emerald-500 font-semibold" : "text-muted-foreground"
+                          )}>
+                            {reviewDateStr}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-border/40 gap-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleOpenStatusModal(item.problemId, item.problemTitle)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-semibold cursor-pointer text-foreground shadow-sm transition-all"
+                            title={`Status: ${stat.text}`}
+                          >
+                            {stat.icon}
+                            <span>{stat.text}</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const slug = item.problemTitle.toLowerCase().replace(/ /g, "-");
+                              setPomodoroPromptProblem({
+                                id: item.problemId,
+                                title: item.problemTitle,
+                                difficulty: item.difficulty,
+                                leetcodeUrl: `https://leetcode.com/problems/${slug}/`
+                              });
+                            }}
+                            className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted cursor-pointer shadow-sm flex items-center justify-center"
+                            title="Solve on LeetCode"
+                          >
+                            <img
+                              src={leetcodeLogo}
+                              alt="LeetCode"
+                              className="size-4 object-contain"
+                            />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleBookmarkToggle(item.problemId)}
+                            className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer"
+                            title={isBook ? "Remove Bookmark" : "Add Bookmark"}
+                          >
+                            <Bookmark className={cn("size-4", isBook ? "text-amber-500 fill-amber-500" : "")} />
+                          </button>
+                          
+                          <button
+                            onClick={() => handleOpenNoteModal(item.problemId)}
+                            className={cn(
+                              "p-1.5 rounded cursor-pointer transition-colors",
+                              hasNote 
+                                ? "text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400 animate-pulse" 
+                                : "text-muted-foreground hover:bg-muted"
+                            )}
+                            title={hasNote ? "Edit Notes" : "Add Notes"}
+                          >
+                            <FileText className="size-4" />
+                          </button>
+
+                          <Link
+                            to={`/problems/${item.problemId}`}
+                            className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer inline-flex items-center"
+                            title="Open Spaced Repetition Workspace"
+                          >
+                            <Eye className="size-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
             {/* Pagination Controls Footer */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-3.5 border-t border-border bg-muted/10 text-xs text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3.5 border-t border-border bg-muted/10 text-xs text-muted-foreground">
                 <span>
-                  Showing Page <span className="font-semibold text-foreground">{currentPage}</span> of <span className="font-semibold text-foreground">{totalPages}</span> ({totalItems} matching revisions)
+                  Showing Page <span className="font-semibold text-foreground">{currentPage}</span> of <span className="font-semibold text-foreground">{totalPages}</span> <span className="hidden sm:inline">({totalItems} matching revisions)</span>
                 </span>
 
                 <div className="flex gap-2">
@@ -629,98 +856,6 @@ export function RevisionPage() {
                 </div>
               </div>
             )}
-          </div>
-
-        </div>
-
-        {/* Right Column (1/3 width) - upcoming list, stats metrics, motivational cards */}
-        <div className="space-y-6">
-          
-          {/* SECTION 8: MOTIVATION ALERTS CARD */}
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm text-center space-y-3 relative overflow-hidden">
-            <div className="size-10 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-xl">
-              🔥
-            </div>
-            
-            {stats.dueTodayCount > 0 ? (
-              <div className="space-y-1">
-                <Typography variant="title" className="text-foreground block">
-                  Keep the Momentum Going!
-                </Typography>
-                <p className="text-xs text-muted-foreground">
-                  Only <span className="font-bold text-foreground">{stats.dueTodayCount} problems</span> left to revise today. Complete them to safeguard your consistency streak.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <Typography variant="title" className="text-emerald-600 dark:text-emerald-400 block font-semibold">
-                  Today's Revision Completed
-                </Typography>
-                <p className="text-xs text-muted-foreground">
-                  Great job! You have cleared today's spaced recall queue. Solve new challenges to build memory index lists.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* SECTION 6: UPCOMING REVISIONS FORECAST */}
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
-            <div className="border-b border-border pb-3">
-              <Typography variant="title" className="text-foreground block">
-                Upcoming Revision Forecast
-              </Typography>
-            </div>
-            
-            <div className="space-y-3">
-              {[
-                { label: "Tomorrow", count: forecastCounts.tomorrow },
-                { label: "This Week", count: forecastCounts.thisWeek },
-                { label: "Next Month", count: forecastCounts.nextMonth },
-              ].map((item) => (
-                <div key={item.label} className="flex justify-between items-center text-xs p-2.5 rounded bg-background border border-border">
-                  <span className="font-semibold text-muted-foreground">{item.label}</span>
-                  <span className="font-bold text-foreground bg-muted px-2 py-0.5 rounded-full">
-                    {item.count} {item.count === 1 ? "problem" : "problems"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* SECTION 7: REVISION STATISTICS (TINY STATS) */}
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
-            <div className="border-b border-border pb-3 flex items-center justify-between">
-              <Typography variant="title" className="text-foreground">
-                Recall Statistics
-              </Typography>
-              <TrendingUp className="size-4 text-emerald-500" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Today's Accuracy</span>
-                <span className="text-sm font-semibold text-foreground">{todayAccuracy}</span>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Completed Solves</span>
-                <span className="text-sm font-semibold text-foreground">{stats.recallStats.completedSolves}</span>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Current Streak</span>
-                <span className="text-sm font-semibold text-foreground flex items-center gap-0.5">
-                  <Flame className="size-3.5 text-amber-500 fill-amber-500/10" /> {activeStreak} Days
-                </span>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Mastered Items</span>
-                <span className="text-sm font-semibold text-foreground flex items-center gap-0.5">
-                  <Sparkles className="size-3.5 text-purple-500 fill-purple-500/10" /> {masteredCount} Items
-                </span>
-              </div>
-            </div>
           </div>
 
         </div>

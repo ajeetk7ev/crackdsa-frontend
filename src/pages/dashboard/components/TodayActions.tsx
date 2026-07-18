@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useNotificationStore } from "@/stores/notification.store";
 import { useAuthStore } from "@/stores/auth.store";
@@ -14,8 +13,6 @@ import {
   ArrowUpRight, 
   CheckCircle2, 
   ExternalLink,
-  Search,
-  Check,
   Award,
   Link2Off,
   UserCheck
@@ -265,7 +262,7 @@ export function LeetcodeProfileCard() {
                 type="text"
                 placeholder="Enter LeetCode username"
                 value={inputUsername}
-                onChange={(e) => setInputUsername(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputUsername(e.target.value)}
                 className="text-xs"
               />
             </div>
@@ -422,11 +419,16 @@ export function LeetcodeProfileCard() {
 }
 
 // 3. Redesigned Today's Goal Card
-export function TodayGoalCard({ problems, solvedProblemIds }: { problems: ProblemItem[]; solvedProblemIds: string[] }) {
+export function TodayGoalCard({ 
+  problems, 
+  solvedProblemIds, 
+  onGoalStatusChange 
+}: { 
+  problems: ProblemItem[]; 
+  solvedProblemIds: string[]; 
+  onGoalStatusChange?: () => void; 
+}) {
   const [goalIds, setGoalIds] = useState<string[]>([]);
-  const [isSetOpen, setIsSetOpen] = useState(false);
-  const [isViewAllOpen, setIsViewAllOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const addToast = useNotificationStore((state: any) => state.addToast);
 
   // Load goals from backend
@@ -443,14 +445,7 @@ export function TodayGoalCard({ problems, solvedProblemIds }: { problems: Proble
     loadGoals();
   }, []);
 
-  const saveGoals = async (ids: string[]) => {
-    try {
-      const res = await api.post("/goals/today", { problems: ids });
-      setGoalIds(res.data.data.problemIds);
-    } catch {
-      addToast("Failed to save today's goals.", "error");
-    }
-  };
+
 
   const clearGoals = async () => {
     try {
@@ -472,24 +467,20 @@ export function TodayGoalCard({ problems, solvedProblemIds }: { problems: Proble
     return problems.find((p) => p.id === probId);
   };
 
-  // Filter problems for target selection
-  const filteredProblems = problems.filter((p) => {
-    const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          p.topic.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
-
-  const toggleProblemSelection = (probId: string) => {
-    if (goalIds.includes(probId)) {
-      saveGoals(goalIds.filter((id) => id !== probId));
-    } else {
-      if (goalIds.length >= 8) {
-        addToast("We recommend focusing on up to 8 goals per day to prevent burn out.", "warning");
-        return;
+  const handleToggleSolved = async (probId: string, currentSolved: boolean) => {
+    try {
+      const newStatus = currentSolved ? "Needs Revision" : "Solved";
+      await api.put(`/progress/${probId}`, { status: newStatus });
+      addToast(currentSolved ? "Goal marked as pending." : "Goal marked as completed!", "success");
+      if (onGoalStatusChange) {
+        onGoalStatusChange();
       }
-      saveGoals([...goalIds, probId]);
+    } catch (err) {
+      addToast("Failed to update goal status.", "error");
     }
   };
+
+
 
   const handleRedirectToLeetcode = (probTitle: string) => {
     const slug = probTitle.toLowerCase().replace(/ /g, "-");
@@ -522,20 +513,20 @@ export function TodayGoalCard({ problems, solvedProblemIds }: { problems: Proble
             <Typography variant="muted" className="text-xs block leading-relaxed px-2">
               No target problems set for today. Choose up to 4 high-yield goals.
             </Typography>
-            <Button
-              onClick={() => setIsSetOpen(true)}
-              variant="default"
-              size="sm"
-              className="mx-auto cursor-pointer shadow-sm text-xs font-semibold"
-            >
-              Set Today's Goal
-            </Button>
+            <Link to="/problems" className="mx-auto block">
+              <Button
+                variant="default"
+                size="sm"
+                className="cursor-pointer shadow-sm text-xs font-semibold"
+              >
+                Set Today's Goal
+              </Button>
+            </Link>
           </div>
         ) : (
           /* State B: Goals Checklist */
-          <div className="space-y-2 mt-1">
-            {/* Checklist of first 4 items styled same as Today's Revision */}
-            {goalIds.slice(0, 4).map((id) => {
+          <div className="space-y-2 mt-1 max-h-[185px] overflow-y-auto pr-1">
+            {goalIds.map((id) => {
               const prob = getProblemDetails(id);
               if (!prob) return null;
               const solved = isProblemSolved(id);
@@ -550,17 +541,37 @@ export function TodayGoalCard({ problems, solvedProblemIds }: { problems: Proble
               return (
                 <div 
                   key={id}
-                  onClick={() => handleRedirectToLeetcode(prob.title)}
                   className="flex items-center justify-between p-2.5 rounded-lg bg-background border border-border hover:border-border-hover hover:bg-muted/30 transition-all cursor-pointer group"
-                  title="Solve on LeetCode"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className={cn(
-                      "text-xs font-semibold text-foreground truncate group-hover:text-primary-hover transition-colors",
-                      solved ? "line-through text-muted-foreground font-normal" : ""
-                    )}>
-                      {prob.title}
-                    </p>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {/* Checkbox Icon */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSolved(id, solved);
+                      }}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer inline-flex items-center justify-center shrink-0"
+                      title={solved ? "Mark as Pending" : "Mark as Completed"}
+                    >
+                      {solved ? (
+                        <CheckCircle2 className="size-4 text-emerald-500 fill-emerald-500/10" />
+                      ) : (
+                        <div className="size-4 rounded-full border border-muted-foreground/60 hover:border-foreground" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleRedirectToLeetcode(prob.title)}
+                      className="min-w-0 text-left cursor-pointer flex-1"
+                      title="Solve on LeetCode"
+                    >
+                      <p className={cn(
+                        "text-xs font-semibold text-foreground truncate group-hover:text-primary-hover transition-colors",
+                        solved ? "line-through text-muted-foreground font-normal" : ""
+                      )}>
+                        {prob.title}
+                      </p>
+                    </button>
                   </div>
 
                   <div className="flex items-center gap-1.5 ml-2 shrink-0">
@@ -570,191 +581,27 @@ export function TodayGoalCard({ problems, solvedProblemIds }: { problems: Proble
                     )}>
                       {diff}
                     </span>
-                    <span className={cn(
-                      "text-[9px] font-bold border rounded-full px-2 py-0.5 uppercase tracking-wide",
-                      solved 
-                        ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" 
-                        : "text-muted-foreground bg-muted border-border"
-                    )}>
-                      {solved ? "Done" : "Pending"}
-                    </span>
                   </div>
                 </div>
               );
             })}
-
-            {goalIds.length > 4 && (
-              <p className="text-[10px] text-muted-foreground text-center pt-1 font-medium">
-                + {goalIds.length - 4} more goal problems
-              </p>
-            )}
           </div>
         )}
       </div>
 
       {/* Card Footer controls */}
       {goalIds.length > 0 && (
-        <div className="flex gap-2 pt-2">
-          <Button
-            onClick={() => setIsViewAllOpen(true)}
-            variant="outline"
-            size="sm"
-            className="flex-1 text-xs cursor-pointer"
-          >
-            View All
-          </Button>
+        <div className="pt-2">
           <Button
             onClick={clearGoals}
             variant="ghost"
             size="sm"
-            className="text-xs hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border border-dashed cursor-pointer"
+            className="w-full text-xs hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border border-dashed cursor-pointer"
           >
             Reset Goals
           </Button>
         </div>
       )}
-
-      {/* MODAL 1: SET PROBLEMS GOALS LIST */}
-      <Dialog
-        isOpen={isSetOpen}
-        onClose={() => setIsSetOpen(false)}
-        title="Set Today's Goals"
-        description="Select high-yield problems from your curated DSA sheet to tackle today."
-      >
-        <div className="space-y-4">
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search problem title or topic..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 text-xs rounded-lg"
-            />
-          </div>
-
-          {/* List of problems */}
-          <div className="max-h-60 overflow-y-auto space-y-1.5 border border-border rounded-lg p-2 bg-background-secondary/20">
-            {filteredProblems.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">No matching problems found.</p>
-            ) : (
-              filteredProblems.map((p) => {
-                const isSelected = goalIds.includes(p.id);
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => toggleProblemSelection(p.id)}
-                    className={cn(
-                      "flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-all",
-                      isSelected 
-                        ? "border-rose-500 bg-rose-500/5 text-foreground" 
-                        : "border-border/60 hover:border-border hover:bg-muted/30 text-muted-foreground"
-                    )}
-                  >
-                    <div className="text-left">
-                      <p className="font-semibold text-foreground">{p.title}</p>
-                      <p className="text-[9px] text-muted-foreground font-mono">{p.topic} • {p.difficulty}</p>
-                    </div>
-
-                    <div className={cn(
-                      "size-4 rounded border flex items-center justify-center",
-                      isSelected ? "border-rose-500 bg-rose-500 text-white" : "border-border"
-                    )}>
-                      {isSelected && <Check className="size-3" />}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-border pt-3">
-            <span>{goalIds.length} goals selected</span>
-            <Button
-              onClick={() => setIsSetOpen(false)}
-              size="sm"
-              className="bg-primary text-primary-foreground font-semibold px-4 cursor-pointer text-xs"
-            >
-              Done
-            </Button>
-          </div>
-        </div>
-      </Dialog>
-
-      {/* MODAL 2: VIEW ALL GOALS LIST */}
-      <Dialog
-        isOpen={isViewAllOpen}
-        onClose={() => setIsViewAllOpen(false)}
-        title="Today's Target List"
-        description="Inspect details of all chosen goal problems and launch coding sandboxes."
-      >
-        <div className="space-y-4">
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            {goalIds.map((id) => {
-              const prob = getProblemDetails(id);
-              if (!prob) return null;
-              const solved = isProblemSolved(id);
-
-              return (
-                <div
-                  key={id}
-                  className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-background"
-                >
-                  <div className="text-left min-w-0 flex-1 mr-3">
-                    <button
-                      onClick={() => handleRedirectToLeetcode(prob.title)}
-                      className={cn(
-                        "font-semibold text-xs cursor-pointer text-foreground hover:underline text-left block truncate",
-                        solved ? "line-through text-muted-foreground font-normal" : ""
-                      )}
-                    >
-                      {prob.title} <ExternalLink className="size-2.5 inline text-muted-foreground ml-1" />
-                    </button>
-                    <span className="text-[9px] text-muted-foreground font-mono">{prob.topic} • {prob.difficulty}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleProblemSelection(id)}
-                      className="text-[10px] text-muted-foreground hover:text-destructive transition-colors px-1 cursor-pointer"
-                      title="Remove from goals"
-                    >
-                      Remove
-                    </button>
-                    <span className={cn(
-                      "text-[9px] font-bold px-2 py-0.5 rounded",
-                      solved ? "text-emerald-500 bg-emerald-500/10" : "text-muted-foreground bg-muted"
-                    )}>
-                      {solved ? "Mastered" : "Pending"}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-border pt-3">
-            <Button
-              onClick={() => {
-                setIsViewAllOpen(false);
-                setIsSetOpen(true);
-              }}
-              variant="outline"
-              size="sm"
-              className="text-xs cursor-pointer"
-            >
-              Add/Edit Goals
-            </Button>
-            <Button
-              onClick={() => setIsViewAllOpen(false)}
-              size="sm"
-              className="bg-primary text-primary-foreground font-semibold px-4 cursor-pointer text-xs"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </Dialog>
     </div>
   );
 }

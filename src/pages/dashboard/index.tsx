@@ -212,7 +212,11 @@ export function DashboardPage() {
             onReviewSelect={handleReviewSelect}
           />
           <LeetcodeProfileCard />
-          <TodayGoalCard problems={problems} solvedProblemIds={solvedProblemIds} />
+           <TodayGoalCard 
+             problems={problems} 
+             solvedProblemIds={solvedProblemIds} 
+             onGoalStatusChange={loadDashboardData} 
+           />
           <Pomodoro />
         </div>
       </div>
