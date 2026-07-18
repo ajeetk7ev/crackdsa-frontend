@@ -245,44 +245,43 @@ export function ProfilePage() {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (readinessPercent / 100) * circumference;
 
-  // Generate GitHub Heatmap data (last 52 weeks aligned to Sunday)
+  // Generate GitHub Heatmap data for 2026 aligned to Sundays
   const heatmapData = useMemo(() => {
-    const today = new Date();
-    const start = new Date(today);
-    start.setDate(today.getDate() - 364); // 52 weeks ago
-    
-    // Align to Sunday
-    const startDay = start.getDay();
-    start.setDate(start.getDate() - startDay);
+    const start = new Date(2025, 11, 28); // Dec 28, 2025 (Sunday)
+    const end = new Date(2027, 0, 2); // Jan 2, 2027 (Saturday)
 
     const list = [];
     let cur = new Date(start);
-    while (cur <= today) {
-      const dateStr = cur.toISOString().split("T")[0];
-      const count = diagnostics.heatmapMap[dateStr] || 0;
+    while (cur <= end) {
+      const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+      const is2026 = cur.getFullYear() === 2026;
+      const count = is2026 ? (diagnostics.heatmapMap[dateStr] || 0) : -1;
 
-      list.push({ dateStr, count, dateObj: new Date(cur) });
+      list.push({ dateStr, count, dateObj: new Date(cur), is2026 });
       cur.setDate(cur.getDate() + 1);
     }
     return list;
   }, [diagnostics.heatmapMap]);
 
-  // Generate month labels aligning with the 53 week columns
+  // Generate month labels aligning with the 53 week columns of 2026
   const monthLabels = useMemo(() => {
     const labels: { text: string; colIndex: number }[] = [];
     let lastMonth = -1;
 
-    for (let w = 0; w < 53; w++) {
+    const totalCols = Math.ceil(heatmapData.length / 7);
+    for (let w = 0; w < totalCols; w++) {
       const dayIndex = w * 7;
       if (dayIndex >= heatmapData.length) break;
       const date = heatmapData[dayIndex].dateObj;
-      const month = date.getMonth();
-      if (month !== lastMonth) {
-        labels.push({
-          text: date.toLocaleString("en-US", { month: "short" }),
-          colIndex: w,
-        });
-        lastMonth = month;
+      if (date.getFullYear() === 2026) {
+        const month = date.getMonth();
+        if (month !== lastMonth) {
+          labels.push({
+            text: date.toLocaleString("en-US", { month: "short" }),
+            colIndex: w,
+          });
+          lastMonth = month;
+        }
       }
     }
     return labels;
@@ -448,17 +447,17 @@ export function ProfilePage() {
           <span className="text-[10px] text-muted-foreground font-semibold">Problems Solved & Revisions</span>
         </div>
 
-        <div className="flex gap-1.5 text-xs select-none">
+        <div className="flex gap-2 text-xs select-none items-start">
           
           {/* Day of Week Labels (Left Side) */}
-          <div className="grid grid-rows-7 gap-1.5 pr-1.5 pt-5 text-[9px] text-muted-foreground font-semibold h-[116px] text-right w-6 select-none leading-none">
-            <div className="h-3" /> {/* Sun */}
-            <div className="h-3 flex items-center justify-end">Mon</div>
-            <div className="h-3" /> {/* Tue */}
-            <div className="h-3 flex items-center justify-end">Wed</div>
-            <div className="h-3" /> {/* Thu */}
-            <div className="h-3 flex items-center justify-end">Fri</div>
-            <div className="h-3" /> {/* Sat */}
+          <div className="relative text-[9px] text-muted-foreground font-semibold w-8 select-none shrink-0" style={{ height: "150px" }}>
+            <span className="absolute" style={{ top: "24px", right: "6px" }}>Sun</span>
+            <span className="absolute" style={{ top: "42px", right: "6px" }}>Mon</span>
+            <span className="absolute" style={{ top: "60px", right: "6px" }}>Tue</span>
+            <span className="absolute" style={{ top: "78px", right: "6px" }}>Wed</span>
+            <span className="absolute" style={{ top: "96px", right: "6px" }}>Thu</span>
+            <span className="absolute" style={{ top: "114px", right: "6px" }}>Fri</span>
+            <span className="absolute" style={{ top: "132px", right: "6px" }}>Sat</span>
           </div>
 
           {/* Main Heatmap Grid with Month Headers */}
@@ -481,7 +480,9 @@ export function ProfilePage() {
             <div className="grid grid-flow-col grid-rows-7 gap-1.5 py-1 w-[960px]">
               {heatmapData.map((item, idx) => {
                 let bgClass = "bg-muted/30 border-border/40 hover:border-muted-foreground/60";
-                if (item.count === 1) {
+                if (item.count === -1) {
+                  bgClass = "bg-transparent border-transparent pointer-events-none";
+                } else if (item.count === 1) {
                   bgClass = "bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900/40";
                 } else if (item.count === 2) {
                   bgClass = "bg-emerald-300 border-emerald-400 dark:bg-emerald-800/40 dark:border-emerald-800/60";
@@ -507,10 +508,12 @@ export function ProfilePage() {
                     )}
                   >
                     {/* Tooltip Overlay */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/item:block z-50 bg-[#121214] text-white text-[10px] rounded px-2.5 py-1.5 whitespace-nowrap shadow-md pointer-events-none border border-zinc-800 font-medium">
-                      {tooltipText}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
-                    </div>
+                    {item.count !== -1 && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/item:block z-50 bg-[#121214] text-white text-[10px] rounded px-2.5 py-1.5 whitespace-nowrap shadow-md pointer-events-none border border-zinc-800 font-medium">
+                        {tooltipText}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
+                      </div>
+                    )}
                   </div>
                 );
               })}
