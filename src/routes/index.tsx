@@ -26,12 +26,16 @@ import { AdminUsersPage } from "@/pages/admin/users";
 import { AdminAnalyticsPage } from "@/pages/admin/analytics";
 import { NotFoundPage } from "@/pages/not-found";
 
+import { PublicProfilePage } from "@/pages/profile/public";
+
+
 export function AppRoutes() {
   return (
     <Routes>
       {/* 1. Public Routes Group */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/u/:username" element={<PublicProfilePage />} />
       </Route>
 
       {/* 2. Authentication Flow Group */}

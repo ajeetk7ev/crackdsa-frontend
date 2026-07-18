@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { useAuthStore } from "@/stores/auth.store";
 import { useNotificationStore } from "@/stores/notification.store";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/loader";
 
 import {
@@ -36,6 +36,7 @@ interface Revision {
 }
 
 export function ProfilePage() {
+  const navigate = useNavigate();
   const authUser = useAuthStore((state) => state.user);
   const updateProfile = useAuthStore((state) => state.updateProfile);
   const addToast = useNotificationStore((state: any) => state.addToast);
@@ -73,13 +74,9 @@ export function ProfilePage() {
   const [statsError, setStatsError] = useState<string | null>(null);
 
   // Modals Visibility
-  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLeetcodeOpen, setIsLeetcodeOpen] = useState(false);
 
   // Temporary edit binds
-  const [editName, setEditName] = useState("");
-  const [editUsername, setEditUsername] = useState("");
-  const [editBio, setEditBio] = useState("");
   const [editLeetcodeUser, setEditLeetcodeUser] = useState("");
 
   const fetchLeetcodeStats = async (username: string) => {
@@ -140,9 +137,6 @@ export function ProfilePage() {
       setProfileBio(bio);
       setLeetcodeUsername(lcUser);
 
-      setEditName(name);
-      setEditUsername(username);
-      setEditBio(bio);
       setEditLeetcodeUser(lcUser);
     } catch {
       addToast("Failed to fetch profile details.", "error");
@@ -155,31 +149,7 @@ export function ProfilePage() {
     loadProfileData();
   }, [authUser]);
 
-  // 1. Save Profile Details
-  const handleSaveProfile = async () => {
-    if (!editName.trim() || !editUsername.trim()) {
-      addToast("Name and Username are required.", "warning");
-      return;
-    }
 
-    try {
-      await updateProfile({
-        firstname: editName.split(" ")[0] || "",
-        lastname: editName.split(" ").slice(1).join(" ") || "",
-        username: editUsername,
-        bio: editBio
-      });
-
-      setProfileName(editName);
-      setProfileUsername(editUsername);
-      setProfileBio(editBio);
-
-      addToast("Profile details updated successfully.", "success");
-      setIsEditOpen(false);
-    } catch {
-      addToast("Failed to update profile settings.", "error");
-    }
-  };
 
   // 2. Save Leetcode username
   const handleSaveLeetcodeUser = async () => {
@@ -212,9 +182,9 @@ export function ProfilePage() {
 
   // 3. Copy share link
   const handleCopyProfileUrl = () => {
-    const shareUrl = `crackdsa.co.in/u/${profileUsername}`;
+    const shareUrl = `${window.location.origin}/u/${profileUsername}`;
     navigator.clipboard.writeText(shareUrl);
-    addToast(`Copied LinkedIn profile link: ${shareUrl}`, "success");
+    addToast(`Copied public profile link: ${shareUrl}`, "success");
   };
 
   // Stats Calculations
@@ -338,7 +308,7 @@ export function ProfilePage() {
             </button>
             
             <Button
-              onClick={() => setIsEditOpen(true)}
+              onClick={() => navigate("/settings")}
               variant="outline"
               className="h-9 text-xs cursor-pointer shadow-sm"
             >
@@ -675,26 +645,67 @@ export function ProfilePage() {
             </Typography>
 
             {/* Premium Preview wrapper */}
-            <div className="p-5 rounded-xl border border-border bg-[#030303] dark:bg-[#070707] text-white flex flex-col justify-between h-44 relative shadow-inner select-none max-w-md mx-auto">
-              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                <span>CrackDSA Achievement</span>
-                <span>Profile Card</span>
-              </div>
+            <div className="relative overflow-hidden p-6 rounded-xl border border-zinc-800/80 bg-gradient-to-br from-[#08080a] via-[#121215] to-[#1c1c22] text-white flex flex-col justify-between h-48 shadow-2xl max-w-md mx-auto group">
+              {/* Background abstract gradient flow */}
+              <div className="absolute -right-20 -top-20 size-40 bg-rose-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-rose-500/15 transition-all duration-700" />
+              <div className="absolute -left-20 -bottom-20 size-40 bg-orange-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-orange-500/15 transition-all duration-700" />
 
-              <div className="space-y-2 py-2">
-                <p className="text-lg font-bold text-white tracking-tight">{profileName}</p>
-                <div className="flex flex-wrap gap-4 text-xs text-zinc-400">
-                  <span className="text-amber-400 font-bold flex items-center gap-0.5">🔥 {currentStreakVal} Day Streak</span>
-                  <span>•</span>
-                  <span>{solvedCount} Problems Solved</span>
-                  <span>•</span>
-                  <span className="text-indigo-400 font-bold">{percentile} SDE Grade</span>
+              <div className="flex justify-between items-start z-10">
+                <div className="flex items-center gap-3">
+                  {authUser?.avatar ? (
+                    <img
+                      src={authUser.avatar}
+                      alt="Avatar"
+                      className="size-11 rounded-full object-cover border border-zinc-800"
+                    />
+                  ) : (
+                    <div className="size-11 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center font-bold text-base uppercase">
+                      {profileName?.[0] || "A"}
+                    </div>
+                  )}
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-extrabold text-white tracking-tight">{profileName}</p>
+                    <p className="text-[10px] text-zinc-400 font-mono">crackdsa.co.in/u/{profileUsername}</p>
+                  </div>
+                </div>
+
+                {/* Brand element */}
+                <div className="flex flex-col items-end">
+                  <span className="text-[9px] font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400 uppercase">
+                    CrackDSA
+                  </span>
+                  <span className="text-[8px] font-medium text-zinc-500">Verified Scholar</span>
                 </div>
               </div>
 
-              <div className="flex justify-between items-center text-[10px] text-zinc-500 border-t border-zinc-800/80 pt-2.5">
-                <span>crackdsa.co.in/u/{profileUsername}</span>
-                <span className="text-indigo-500 font-semibold">{readinessPercent}% Ready</span>
+              <div className="grid grid-cols-3 gap-2 py-3 border-y border-zinc-900/60 my-2 z-10 text-center">
+                <div className="space-y-0.5">
+                  <span className="text-[9px] text-zinc-500 uppercase font-semibold block">Streak</span>
+                  <span className="text-xs font-bold text-amber-500 flex items-center justify-center gap-0.5">
+                    🔥 {currentStreakVal} Days
+                  </span>
+                </div>
+                <div className="space-y-0.5 border-x border-zinc-900/60">
+                  <span className="text-[9px] text-zinc-500 uppercase font-semibold block">Solved</span>
+                  <span className="text-xs font-bold text-white">
+                    {solvedCount} Qs
+                  </span>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[9px] text-zinc-500 uppercase font-semibold block">Readiness</span>
+                  <span className="text-xs font-bold text-emerald-400">
+                    {readinessPercent}%
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center z-10 text-[9px] text-zinc-400">
+                <span className="font-semibold px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800/80 text-zinc-300 font-mono">
+                  {percentile} SDE Grade
+                </span>
+                <span className="text-[9px] text-zinc-500 font-mono">
+                  Joined {authUser?.createdAt ? new Date(authUser.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "July 2026"}
+                </span>
               </div>
             </div>
 
@@ -774,60 +785,7 @@ export function ProfilePage() {
           DIALOG MODALS
           =================================================== */}
 
-      {/* 1. Edit Profile Dialog */}
-      <Dialog
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        title="Edit Profile Settings"
-        description="Update your personal details visible in achievements cards."
-      >
-        <div className="space-y-4 text-left">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Full Name:
-            </label>
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
-            />
-          </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Username:
-            </label>
-            <input
-              type="text"
-              value={editUsername}
-              onChange={(e) => setEditUsername(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 text-foreground"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Short Bio:
-            </label>
-            <Textarea
-              placeholder="e.g. SDE Prep at CrackDSA..."
-              value={editBio}
-              onChange={(e) => setEditBio(e.target.value)}
-              className="text-xs h-20"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-            <Button variant="outline" size="sm" onClick={() => setIsEditOpen(false)} className="text-xs cursor-pointer">
-              Cancel
-            </Button>
-            <Button onClick={handleSaveProfile} size="sm" className="text-xs cursor-pointer shadow-sm">
-              Save Changes
-            </Button>
-          </div>
-        </div>
-      </Dialog>
 
       {/* 2. Leetcode Connect Dialog */}
       <Dialog
@@ -863,3 +821,5 @@ export function ProfilePage() {
     </div>
   );
 }
+
+export { PublicProfilePage } from "./public";
