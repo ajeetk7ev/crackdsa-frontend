@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
-import { useAuthStore } from "@/stores/auth.store";
 import { Typography } from "@/components/ui/typography";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,7 +33,7 @@ interface Revision {
 }
 
 export function DashboardPage() {
-  const user = useAuthStore((state) => state.user);
+
 
   const [problems, setProblems] = useState<Problem[]>([]);
   const [revisions, setRevisions] = useState<Revision[]>([]);

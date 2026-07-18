@@ -19,11 +19,7 @@ import {
   Bookmark,
   FileText,
   Eye,
-  Circle,
-  AlertCircle,
-  CheckCircle2,
   RefreshCw,
-  Award,
   ArrowLeft,
   CircleDashed,
   Zap,
@@ -49,13 +45,7 @@ interface Collection {
   isPublic?: boolean;
 }
 
-interface RevisionItem {
-  id: string;
-  problemId: string;
-  nextReviewDate: string;
-  status: string;
-  interval: number;
-}
+
 
 export function CollectionsPage() {
   const addToast = useNotificationStore((state: any) => state.addToast);

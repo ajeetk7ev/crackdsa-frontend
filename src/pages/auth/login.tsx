@@ -5,7 +5,7 @@ import { Typography } from "@/components/ui/typography";
 import { Input, PasswordInput } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { LogIn, Lightbulb } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { useNotificationStore } from "@/stores/notification.store";
 
 export function LoginPage() {

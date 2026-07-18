@@ -45,7 +45,7 @@ export function ProblemDetailsPage() {
   // Stats states
   const [timeTaken, setTimeTaken] = useState("");
   const [isEditingTime, setIsEditingTime] = useState(false);
-  const [customReviewDate, setCustomReviewDate] = useState("");
+  const [_, setCustomReviewDate] = useState("");
 
   // Modals state
   const [isStatusOpen, setIsStatusOpen] = useState(false);
@@ -123,35 +123,7 @@ export function ProblemDetailsPage() {
     }
   };
 
-  // Reschedule
-  const handleRescheduleDays = async (days: number) => {
-    setSyncing(true);
-    try {
-      await api.post(`/revisions/${id}/reschedule`, { days });
-      addToast(`Revision rescheduled: due in ${days} days.`, "success");
-      loadProblemDetails();
-    } catch {
-      addToast("Failed to reschedule revision.", "error");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
-  // Custom date
-  const handleCustomDateChange = async (dateStr: string) => {
-    setCustomReviewDate(dateStr);
-    if (!dateStr) return;
-    setSyncing(true);
-    try {
-      await api.post(`/revisions/${id}/custom-date`, { date: dateStr });
-      addToast(`Revision scheduled for ${new Date(dateStr).toLocaleDateString()}`, "success");
-      loadProblemDetails();
-    } catch {
-      addToast("Failed to schedule revision date.", "error");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   // Dynamic colors
   const difficultyColors: Record<string, string> = {

@@ -17,11 +17,7 @@ import {
   Bookmark,
   FileText,
   Eye,
-  Circle,
-  AlertCircle,
-  CheckCircle2,
   RefreshCw,
-  Award,
   CircleDashed,
   Zap,
   Sparkles,
@@ -30,20 +26,7 @@ import {
   Flame,
 } from "lucide-react";
 
-interface Problem {
-  id: string;
-  title: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  topic: string;
-}
 
-interface RevisionItem {
-  id: string;
-  problemId: string;
-  nextReviewDate: string;
-  status: "todo" | "completed";
-  interval: number;
-}
 
 export function BookmarksPage() {
   const [progressList, setProgressList] = useState<any[]>([]);

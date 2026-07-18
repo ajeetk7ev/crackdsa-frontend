@@ -251,7 +251,7 @@ export function ProfilePage() {
     const end = new Date(2027, 0, 2); // Jan 2, 2027 (Saturday)
 
     const list = [];
-    let cur = new Date(start);
+    const cur = new Date(start);
     while (cur <= end) {
       const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
       const is2026 = cur.getFullYear() === 2026;

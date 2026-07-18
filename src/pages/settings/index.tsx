@@ -1,18 +1,14 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/auth.store";
-import { useThemeStore } from "@/stores/theme.store";
 import { useNotificationStore } from "@/stores/notification.store";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
   User as UserIcon,
   Lock,
-  Paintbrush,
-  Bell,
   Trash2,
   AlertTriangle,
 } from "lucide-react";
@@ -24,7 +20,6 @@ type SettingsTab = "profile" | "password" | "danger";
 
 export function SettingsPage() {
   const authUser = useAuthStore((state) => state.user);
-  const updateProfile = useAuthStore((state) => state.updateProfile);
   const logout = useAuthStore((state) => state.logout);
   const addToast = useNotificationStore((state: any) => state.addToast);
 

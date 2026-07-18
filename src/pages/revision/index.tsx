@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
-import { useAuthStore } from "@/stores/auth.store";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { TableSkeleton } from "@/components/ui/loader";
@@ -15,7 +14,6 @@ import { Select } from "@/components/ui/select";
 
 import {
   CheckCircle2,
-  ChevronRight,
   Flame,
   Clock,
   Sparkles,
@@ -26,7 +24,6 @@ import {
   Bookmark,
   FileText,
   Eye,
-  XCircle,
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,7 +44,6 @@ interface RevisionItem {
   repetitions: number;
 }
 
-type FilterMode = "All" | "Due" | "Week" | "Month" | "Overdue" | "Completed" | "Bookmarked" | "Mastered" | "CustomRange";
 
 export function RevisionPage() {
   const navigate = useNavigate();
@@ -71,7 +67,7 @@ export function RevisionPage() {
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
-  const [limitPerPage, setLimitPerPage] = useState(10);
+  const [limitPerPage, _] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -238,7 +234,7 @@ export function RevisionPage() {
     });
   };
 
-  const user = useAuthStore((state) => state.user);
+  
   const activeStreak = stats.recallStats.streak;
 
   // Solve accuracy today

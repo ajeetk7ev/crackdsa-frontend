@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
@@ -19,11 +19,7 @@ import {
   Eye,
   XCircle,
   RotateCcw,
-  Circle,
-  AlertCircle,
-  CheckCircle2,
   RefreshCw,
-  Award,
   CircleDashed,
   Zap,
   Sparkles,
@@ -41,13 +37,7 @@ interface Problem {
   solvedCount: number;
 }
 
-interface RevisionItem {
-  id: string;
-  problemId: string;
-  nextReviewDate: string;
-  status: string;
-  interval: number;
-}
+
 
 export function ProblemsPage() {
   const [searchParams, setSearchParams] = useSearchParams();

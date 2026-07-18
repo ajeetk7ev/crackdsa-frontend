@@ -10,7 +10,7 @@ import {
   Activity, 
   TrendingUp, 
   ShieldAlert, 
-  ServerCrash
+
 } from "lucide-react";
 
 interface SummaryData {
