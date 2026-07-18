@@ -47,6 +47,20 @@ export function ProfilePage() {
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Diagnostics State
+  const [diagnostics, setDiagnostics] = useState<any>({
+    readinessScore: 10,
+    percentile: "Top 25%",
+    heatmapMap: {},
+    monthlySummary: {
+      solvedThisMonth: 0,
+      revisionsThisMonth: 0,
+      studyHoursThisMonth: 0,
+      longestStreak: 0
+    },
+    recentActivities: []
+  });
+
   // Profile Customization States
   const [profileName, setProfileName] = useState("");
   const [profileBio, setProfileBio] = useState("");
@@ -100,23 +114,25 @@ export function ProfilePage() {
 
   const loadProfileData = async () => {
     try {
-      const [probRes, revRes, progRes, colRes] = await Promise.all([
+      const [probRes, revRes, progRes, colRes, diagRes] = await Promise.all([
         api.get("/problems?limit=1000"),
         api.get("/revisions"),
         api.get("/progress"),
-        api.get("/collections")
+        api.get("/collections"),
+        api.get("/progress/diagnostics")
       ]);
 
       setProblems(probRes.data.data.problems);
       setRevisions(revRes.data.data);
       setProgressList(progRes.data.data);
       setCollections(colRes.data.data);
+      setDiagnostics(diagRes.data.data);
 
       const firstname = authUser?.firstname || "";
       const lastname = authUser?.lastname || "";
       const name = firstname || lastname ? `${firstname} ${lastname}`.trim() : "Alex Miller";
       const username = authUser?.username || "alex_miller";
-      const bio = authUser?.bio || "SDE Prep | Targeting Mid-Level placement boards";
+      const bio = authUser?.bio || "";
       const lcUser = authUser?.leetcodeUsername || "";
 
       setProfileName(name);
@@ -221,20 +237,8 @@ export function ProfilePage() {
   const longestStreakVal = authUser?.streak?.longest || 0;
 
   // Interview Readiness Score calculations
-  const readinessPercent = useMemo(() => {
-    if (solvedCount === 0) return 10;
-    const streakLength = authUser?.solvedDates?.length || 0;
-    return Math.min(96, Math.ceil(20 + (solvedCount / (problems.length || 1)) * 70 + (streakLength * 0.5)));
-  }, [solvedCount, problems, authUser]);
-
-  const getPercentileRank = (percent: number) => {
-    if (percent > 90) return "Top 2%";
-    if (percent > 70) return "Top 5%";
-    if (percent > 50) return "Top 12%";
-    return "Top 25%";
-  };
-
-  const percentile = getPercentileRank(readinessPercent);
+  const readinessPercent = diagnostics.readinessScore;
+  const percentile = diagnostics.percentile;
 
   // SVG circular calculations
   const radius = 30;
@@ -255,20 +259,13 @@ export function ProfilePage() {
     let cur = new Date(start);
     while (cur <= today) {
       const dateStr = cur.toISOString().split("T")[0];
-      
-      // Calculate solved count on this day from progressList
-      const count = progressList.filter(
-        (p) =>
-          ["Solved", "Needs Revision", "Revised Once", "Revised Twice", "Mastered"].includes(p.status) &&
-          p.updatedAt &&
-          p.updatedAt.startsWith(dateStr)
-      ).length;
+      const count = diagnostics.heatmapMap[dateStr] || 0;
 
       list.push({ dateStr, count, dateObj: new Date(cur) });
       cur.setDate(cur.getDate() + 1);
     }
     return list;
-  }, [progressList]);
+  }, [diagnostics.heatmapMap]);
 
   // Generate month labels aligning with the 53 week columns
   const monthLabels = useMemo(() => {
@@ -318,7 +315,7 @@ export function ProfilePage() {
                 {profileName}
               </Typography>
               <p className="text-xs text-muted-foreground font-mono">@{profileUsername}</p>
-              <p className="text-xs text-muted-foreground mt-1">{profileBio}</p>
+              {profileBio && <p className="text-xs text-muted-foreground mt-1">{profileBio}</p>}
               <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1 font-medium">
                 <Calendar className="size-3" /> Joined July 2026
               </p>
@@ -716,10 +713,10 @@ export function ProfilePage() {
             
             <div className="space-y-3 text-xs">
               {[
-                { label: "Problems Solved This Month", val: `${Math.min(solvedCount, 24)} solved` },
-                { label: "Revisions This Month", val: `${Math.min(revisionsCount, 18)} revised` },
-                { label: "Study Hours logged", val: "35 hours" },
-                { label: "Best Streak achieved", val: `${longestStreakVal} days` },
+                { label: "Problems Solved This Month", val: `${diagnostics.monthlySummary.solvedThisMonth} solved` },
+                { label: "Revisions This Month", val: `${diagnostics.monthlySummary.revisionsThisMonth} revised` },
+                { label: "Study Hours logged", val: `${diagnostics.monthlySummary.studyHoursThisMonth} hours` },
+                { label: "Best Streak achieved", val: `${diagnostics.monthlySummary.longestStreak} days` },
               ].map((item) => (
                 <div key={item.label} className="flex justify-between items-center p-2.5 rounded bg-background border border-border">
                   <span className="font-semibold text-muted-foreground">{item.label}</span>
@@ -736,18 +733,25 @@ export function ProfilePage() {
             </Typography>
 
             <div className="space-y-4 relative pl-4 mt-2 border-l border-border/80 text-xs">
-              {[
-                { activity: "Solved Trapping Rain Water", desc: "Correct submission logged on LeetCode", time: "2 hours ago" },
-                { activity: "Revised LRU Cache", desc: "Anki Sm2 confidence set: Good (8d)", time: "1 day ago" },
-                { activity: "Created Microsoft Collection", desc: "Playlist roadmap added", time: "3 days ago" },
-                { activity: "Completed Today's Revision Queue", desc: "All catches verified", time: "4 days ago" },
-              ].map((act, idx) => (
-                <div key={idx} className="relative space-y-0.5">
-                  <span className="absolute -left-[21px] size-2 rounded-full border bg-background border-indigo-500" />
-                  <p className="font-semibold text-foreground">{act.activity}</p>
-                  <p className="text-[10px] text-muted-foreground">{act.desc} • {act.time}</p>
-                </div>
-              ))}
+              {diagnostics.recentActivities.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No recent activity logs recorded.</p>
+              ) : (
+                diagnostics.recentActivities.map((act: any, idx: number) => {
+                  const timeLabel = new Date(act.time).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit"
+                  });
+                  return (
+                    <div key={idx} className="relative space-y-0.5">
+                      <span className="absolute -left-[21px] size-2 rounded-full border bg-background border-indigo-500" />
+                      <p className="font-semibold text-foreground">{act.activity}</p>
+                      <p className="text-[10px] text-muted-foreground">{act.desc} • {timeLabel}</p>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
