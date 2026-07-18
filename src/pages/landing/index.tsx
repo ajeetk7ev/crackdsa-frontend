@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useNotificationStore } from "@/stores/notification.store";
+import { useAuthStore } from "@/stores/auth.store";
 import {
   BrainCircuit,
   Target,
@@ -37,6 +38,11 @@ interface MockProblem {
 
 export function LandingPage() {
   const addToast = useNotificationStore((state: any) => state.addToast);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  useEffect(() => {
+    document.title = "CrackDSA | Spaced Repetition DSA Tracker for LeetCode";
+  }, []);
 
   // FAQ Accordion State
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
@@ -204,16 +210,33 @@ export function LandingPage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-wrap gap-4 items-center pt-2">
-            <Link to="/signup">
-              <Button size="lg" className="h-11 px-7 cursor-pointer shadow-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg text-sm flex items-center gap-1.5 transition-transform hover:-translate-y-0.5">
-                Start Mastering DSA <ArrowRight className="size-4" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" size="lg" className="h-11 px-7 cursor-pointer hover:bg-muted/50 rounded-lg text-sm text-foreground">
-                Browse Problems
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/dashboard">
+                  <Button size="lg" className="h-11 px-7 cursor-pointer shadow-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg text-sm flex items-center gap-1.5 transition-transform hover:-translate-y-0.5">
+                    Go to Dashboard <ArrowRight className="size-4" />
+                  </Button>
+                </Link>
+                <Link to="/problems">
+                  <Button variant="outline" size="lg" className="h-11 px-7 cursor-pointer hover:bg-muted/50 rounded-lg text-sm text-foreground">
+                    Browse Problems
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/signup">
+                  <Button size="lg" className="h-11 px-7 cursor-pointer shadow-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg text-sm flex items-center gap-1.5 transition-transform hover:-translate-y-0.5">
+                    Start Mastering DSA <ArrowRight className="size-4" />
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button variant="outline" size="lg" className="h-11 px-7 cursor-pointer hover:bg-muted/50 rounded-lg text-sm text-foreground">
+                    Browse Problems
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Micro-Social Proof */}
@@ -1299,16 +1322,26 @@ export function LandingPage() {
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center relative z-10 pt-2">
-            <Link to="/signup">
-              <Button size="lg" className="h-11 px-8 cursor-pointer shadow-md bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-lg text-sm flex items-center gap-1.5">
-                Start Mastering DSA
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" size="lg" className="h-11 px-8 cursor-pointer hover:bg-muted/50 rounded-lg text-sm text-foreground">
-                Sign In
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/dashboard">
+                <Button size="lg" className="h-11 px-8 cursor-pointer shadow-md bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-lg text-sm flex items-center gap-1.5">
+                  Go to Dashboard <ArrowRight className="size-4" />
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/signup">
+                  <Button size="lg" className="h-11 px-8 cursor-pointer shadow-md bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-lg text-sm flex items-center gap-1.5">
+                    Start Mastering DSA
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button variant="outline" size="lg" className="h-11 px-8 cursor-pointer hover:bg-muted/50 rounded-lg text-sm text-foreground">
+                    Sign In
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
         </div>

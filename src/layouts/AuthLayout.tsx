@@ -5,6 +5,7 @@ import { useThemeStore } from "@/stores/theme.store";
 import { Sun, Moon, Calendar, Zap, Target } from "lucide-react";
 import { ToastContainer } from "@/components/common/Toast";
 import { PageLoader } from "@/components/ui/loader";
+import { Logo } from "@/components/common/Logo";
 
 export function AuthLayout() {
   const { theme, toggleTheme } = useThemeStore();
@@ -37,11 +38,8 @@ export function AuthLayout() {
         {/* Subtle grid lines background pattern */}
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px]" />
         
-        <Link to="/" className="flex items-center gap-2 font-semibold text-lg text-white tracking-tight select-none relative z-10">
-          <span className="bg-white text-black size-6 rounded-md flex items-center justify-center font-bold text-xs">
-            C
-          </span>
-          CrackDSA
+        <Link to="/" className="flex items-center gap-2 select-none relative z-10">
+          <Logo size={28} textColorClass="text-white" />
         </Link>
 
         {/* Motivational / Feature highlight block */}
@@ -82,11 +80,8 @@ export function AuthLayout() {
       {/* 2. Right Credentials Input Panel */}
       <div className="flex-1 flex flex-col justify-between p-8 md:p-12 relative">
         <header className="flex justify-between items-center lg:justify-end mb-6">
-          <Link to="/" className="lg:hidden flex items-center gap-2 font-semibold text-lg text-foreground tracking-tight select-none">
-            <span className="bg-primary text-primary-foreground size-6 rounded-md flex items-center justify-center font-bold text-xs">
-              C
-            </span>
-            CrackDSA
+          <Link to="/" className="lg:hidden flex items-center gap-2 select-none">
+            <Logo size={28} />
           </Link>
           <button
             onClick={() => toggleTheme()}

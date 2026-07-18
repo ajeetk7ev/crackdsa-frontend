@@ -18,6 +18,7 @@ import {
   Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/common/Logo";
 
 interface SidebarProps {
   isOpenOnMobile: boolean;
@@ -99,18 +100,10 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
       >
         {/* Brand Header */}
         <div className="relative flex h-14 items-center justify-between px-4 border-b border-border">
-          {!isCollapsed && (
-            <div className="flex items-center gap-2 font-semibold text-lg text-foreground tracking-tight select-none">
-              <span className="bg-primary text-primary-foreground size-6 rounded-md flex items-center justify-center font-bold text-xs">
-                C
-              </span>
-              CrackDSA
-            </div>
-          )}
-          {isCollapsed && (
-            <div className="bg-primary text-primary-foreground size-6 rounded-md flex items-center justify-center font-bold text-xs mx-auto">
-              C
-            </div>
+          {!isCollapsed ? (
+            <Logo size={24} />
+          ) : (
+            <Logo size={24} iconOnly={true} className="mx-auto" />
           )}
           
           {/* Collapse toggle (desktop only) - floats on border line in between sidebar and header corner */}
