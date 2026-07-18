@@ -55,10 +55,16 @@ export function RevisionPage() {
 
   // States
   const [problems, setProblems] = useState<Problem[]>([]);
-  const [revisions, setRevisions] = useState<RevisionItem[]>([]);
   const [tableRevisions, setTableRevisions] = useState<RevisionItem[]>([]);
   const [progressList, setProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>({
+    dueTodayCount: 0,
+    completedTodayCount: 0,
+    difficultyBreakdown: { Easy: 0, Medium: 0, Hard: 0 },
+    forecast: { tomorrow: 0, thisWeek: 0, nextMonth: 0 },
+    recallStats: { streak: 0, completedSolves: 0, masteredItems: 0 }
+  });
   
   const [statusFilter, setStatusFilter] = useState<"Due" | "Completed" | "Overdue" | "Bookmarked" | "Mastered" | "All">("Due");
   const [timeframeFilter, setTimeframeFilter] = useState<"Today" | "Week" | "Month" | "All">("Today");
@@ -79,14 +85,14 @@ export function RevisionPage() {
   // Load Data
   const loadRevisionData = async () => {
     try {
-      const [probRes, revRes, progRes] = await Promise.all([
+      const [probRes, statsRes, progRes] = await Promise.all([
         api.get("/problems?limit=1000"),
-        api.get("/revisions"),
+        api.get("/revisions/stats"),
         api.get("/progress")
       ]);
       
       setProblems(probRes.data.data.problems);
-      setRevisions(revRes.data.data);
+      setStats(statsRes.data.data);
       setProgressList(progRes.data.data);
     } catch {
       addToast("Failed to fetch initial page metrics.", "error");
@@ -148,66 +154,18 @@ export function RevisionPage() {
     });
   }, [tableRevisions, problems, progressList]);
 
-  // Calculations for Hero / Progress Cards
-  const dueItems = useMemo(() => {
-    const nowTime = Date.now();
-    return revisions.filter((r) => new Date(r.nextReviewDate).getTime() <= nowTime && r.status === "todo");
-  }, [revisions]);
-
-  const completedTodayCount = useMemo(() => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const solvedToday = progressList.filter(
-      (p) => ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(p.status) && p.updatedAt && p.updatedAt.startsWith(todayStr)
-    );
-    return solvedToday.length;
-  }, [progressList]);
-
-  const totalTodayTasks = dueItems.length + completedTodayCount;
-  const progressPercent = totalTodayTasks > 0 ? Math.ceil((completedTodayCount / totalTodayTasks) * 100) : 0;
+  // Calculations for Hero / Progress Cards from backend stats
+  const totalTodayTasks = stats.dueTodayCount + stats.completedTodayCount;
+  const progressPercent = totalTodayTasks > 0 ? Math.ceil((stats.completedTodayCount / totalTodayTasks) * 100) : 0;
 
   // Estimated Time: 15 min per due problem
-  const estMinutes = dueItems.length * 15;
+  const estMinutes = stats.dueTodayCount * 15;
   const estHours = Math.floor(estMinutes / 60);
   const estRemainingMins = estMinutes % 60;
   const estTimeStr = estHours > 0 ? `${estHours}h ${estRemainingMins}m` : `${estRemainingMins}m`;
 
-  // Difficulty breakdown of due tasks
-  const difficultyBreakdown = useMemo(() => {
-    const counts = { Easy: 0, Medium: 0, Hard: 0 };
-    dueItems.forEach((rev) => {
-      const prob = problems.find((p) => p.id === rev.problemId);
-      if (prob) {
-        const diff = prob.difficulty as "Easy" | "Medium" | "Hard";
-        if (counts[diff] !== undefined) counts[diff]++;
-      }
-    });
-    return counts;
-  }, [dueItems, problems]);
-
-  // Tomorrow / Weekly / Monthly Forecasts
-  const forecastCounts = useMemo(() => {
-    const now = Date.now();
-    const tomorrowLimit = now + 24 * 3600 * 1000;
-    const weekLimit = now + 7 * 24 * 3600 * 1000;
-    const monthLimit = now + 30 * 24 * 3600 * 1000;
-
-    const tomorrow = revisions.filter((r) => {
-      const d = new Date(r.nextReviewDate).getTime();
-      return d > now && d <= tomorrowLimit && r.status === "todo";
-    }).length;
-
-    const thisWeek = revisions.filter((r) => {
-      const d = new Date(r.nextReviewDate).getTime();
-      return d > now && d <= weekLimit && r.status === "todo";
-    }).length;
-
-    const nextMonth = revisions.filter((r) => {
-      const d = new Date(r.nextReviewDate).getTime();
-      return d > now && d <= monthLimit && r.status === "todo";
-    }).length;
-
-    return { tomorrow, thisWeek, nextMonth };
-  }, [revisions]);
+  const difficultyBreakdown = stats.difficultyBreakdown;
+  const forecastCounts = stats.forecast;
 
   // Dynamic status check resolver
   const getProblemStatusDot = (probId: string) => {
@@ -281,20 +239,19 @@ export function RevisionPage() {
   };
 
   const user = useAuthStore((state) => state.user);
-  const activeStreak = user?.streak?.current || 0;
+  const activeStreak = stats.recallStats.streak;
 
   // Solve accuracy today
   const todayAccuracy = "100%";
 
   // Mastered counts
-  const masteredCount = useMemo(() => {
-    return revisions.filter((r) => r.interval >= 15).length;
-  }, [revisions]);
+  const masteredCount = stats.recallStats.masteredItems;
 
   // Trigger start review
   const handleStartRevising = () => {
-    if (dueItems.length > 0) {
-      navigate(`/problems/${dueItems[0].problemId}`);
+    const due = tableRevisions.find((r) => r.status === "todo" && new Date(r.nextReviewDate).getTime() <= Date.now());
+    if (due) {
+      navigate(`/problems/${due.problemId}`);
     } else {
       addToast("Your revision queue is fully caught up!", "success");
     }
@@ -394,7 +351,7 @@ export function RevisionPage() {
               </Typography>
               
               <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-1">
-                <span className="font-semibold text-foreground">{dueItems.length} Problems Due</span>
+                <span className="font-semibold text-foreground">{stats.dueTodayCount} Problems Due</span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <Clock className="size-3 text-indigo-500" /> Est: {estTimeStr}
@@ -410,7 +367,7 @@ export function RevisionPage() {
 
             <Button
               onClick={handleStartRevising}
-              disabled={dueItems.length === 0}
+              disabled={stats.dueTodayCount === 0}
               variant="default"
               className="h-10 px-6 cursor-pointer shadow-sm shrink-0"
             >
@@ -423,7 +380,7 @@ export function RevisionPage() {
             <div className="flex justify-between items-baseline text-xs">
               <span className="font-bold text-muted-foreground uppercase">Today's Progress</span>
               <span className="font-semibold text-foreground">
-                {completedTodayCount} / {totalTodayTasks} Revised ({progressPercent}%)
+                {stats.completedTodayCount} / {totalTodayTasks} Revised ({progressPercent}%)
               </span>
             </div>
             
@@ -689,13 +646,13 @@ export function RevisionPage() {
               🔥
             </div>
             
-            {dueItems.length > 0 ? (
+            {stats.dueTodayCount > 0 ? (
               <div className="space-y-1">
                 <Typography variant="title" className="text-foreground block">
                   Keep the Momentum Going!
                 </Typography>
                 <p className="text-xs text-muted-foreground">
-                  Only <span className="font-bold text-foreground">{dueItems.length} problems</span> left to revise today. Complete them to safeguard your consistency streak.
+                  Only <span className="font-bold text-foreground">{stats.dueTodayCount} problems</span> left to revise today. Complete them to safeguard your consistency streak.
                 </p>
               </div>
             ) : (
@@ -751,7 +708,7 @@ export function RevisionPage() {
 
               <div>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase block">Completed Solves</span>
-                <span className="text-sm font-semibold text-foreground">{progressList.filter((p) => ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(p.status)).length}</span>
+                <span className="text-sm font-semibold text-foreground">{stats.recallStats.completedSolves}</span>
               </div>
 
               <div>
