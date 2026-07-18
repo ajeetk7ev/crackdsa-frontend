@@ -305,9 +305,17 @@ export function ProfilePage() {
         {/* HERO PROFILE CARD */}
         <div className="flex flex-col p-6 rounded-xl border border-border bg-card shadow-sm justify-between gap-4 h-full">
           <div className="flex items-center gap-4">
-            <div className="size-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-2xl uppercase">
-              {profileName?.[0] || "A"}
-            </div>
+            {authUser?.avatar ? (
+              <img
+                src={authUser.avatar}
+                alt="Profile Avatar"
+                className="size-16 rounded-full object-cover border border-border"
+              />
+            ) : (
+              <div className="size-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-2xl uppercase">
+                {profileName?.[0] || "A"}
+              </div>
+            )}
 
             <div className="space-y-1">
               <Typography variant="h1" className="font-semibold text-foreground">

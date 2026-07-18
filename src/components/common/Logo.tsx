@@ -19,9 +19,9 @@ export function Logo({ className = "", iconOnly = false, size = 32, textColorCla
       >
         <defs>
           <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#6366f1" /> {/* Indigo */}
-            <stop offset="50%" stopColor="#8b5cf6" /> {/* Purple */}
-            <stop offset="100%" stopColor="#10b981" /> {/* Emerald */}
+            <stop offset="0%" stopColor="#f43f5e" /> {/* Rose */}
+            <stop offset="50%" stopColor="#d946ef" /> {/* Fuchsia */}
+            <stop offset="100%" stopColor="#f97316" /> {/* Orange */}
           </linearGradient>
           <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -40,16 +40,16 @@ export function Logo({ className = "", iconOnly = false, size = 32, textColorCla
         />
 
         {/* DSA Nodes/Network subtle background */}
-        <circle cx="50" cy="18" r="3" fill="#6366f1" />
-        <circle cx="82" cy="32" r="3" fill="#8b5cf6" />
-        <circle cx="82" cy="68" r="3" fill="#10b981" />
-        <circle cx="18" cy="32" r="3" fill="#6366f1" />
-        <circle cx="18" cy="68" r="3" fill="#10b981" />
+        <circle cx="50" cy="18" r="3" fill="#f43f5e" />
+        <circle cx="82" cy="32" r="3" fill="#d946ef" />
+        <circle cx="82" cy="68" r="3" fill="#f97316" />
+        <circle cx="18" cy="32" r="3" fill="#f43f5e" />
+        <circle cx="18" cy="68" r="3" fill="#f97316" />
         
         {/* Left angle bracket < */}
         <path
           d="M 38,32 L 24,50 L 38,68"
-          stroke="#6366f1"
+          stroke="#f43f5e"
           strokeWidth="6"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -58,7 +58,7 @@ export function Logo({ className = "", iconOnly = false, size = 32, textColorCla
         {/* Right angle bracket > */}
         <path
           d="M 62,32 L 76,50 L 62,68"
-          stroke="#10b981"
+          stroke="#f97316"
           strokeWidth="6"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -76,7 +76,7 @@ export function Logo({ className = "", iconOnly = false, size = 32, textColorCla
       </svg>
 
       {!iconOnly && (
-        <span className="text-xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 bg-clip-text text-transparent font-sans">
+        <span className="text-xl font-extrabold bg-gradient-to-r from-rose-500 via-fuchsia-500 to-orange-500 bg-clip-text text-transparent font-sans">
           Crack<span className={textColorClass}>DSA</span>
         </span>
       )}

@@ -35,11 +35,21 @@ interface ProblemItem {
 interface TodayRevisionProps {
   revisions: RevisionItem[];
   problems: ProblemItem[];
+  progressList: any[];
   onReviewSelect: (problemId: string) => void;
+  onRevisionStatusChange?: () => void;
 }
 
 // 1. Today's Revision Card
-export function TodayRevisionCard({ revisions, problems, onReviewSelect }: TodayRevisionProps) {
+export function TodayRevisionCard({ 
+  revisions, 
+  problems, 
+  progressList,
+  onReviewSelect, 
+  onRevisionStatusChange 
+}: TodayRevisionProps) {
+  const addToast = useNotificationStore((state: any) => state.addToast);
+
   const getProblemTitle = (probId: string) => {
     const found = problems.find((p) => p.id === probId);
     return found ? found.title : "Algorithm Problem";
@@ -48,6 +58,36 @@ export function TodayRevisionCard({ revisions, problems, onReviewSelect }: Today
   const getProblemDifficulty = (probId: string) => {
     const found = problems.find((p) => p.id === probId);
     return found ? found.difficulty : "Easy";
+  };
+
+  const handleToggleRevision = async (probId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    // Find the current status in progressList
+    const prog = progressList.find((p) => p.problemId === probId);
+    const currentStatus = prog ? prog.status : "Solved";
+    
+    let nextStatus = "Revised Once";
+    if (currentStatus === "Solved") {
+      nextStatus = "Revised Once";
+    } else if (currentStatus === "Revised Once") {
+      nextStatus = "Revised Twice";
+    } else if (currentStatus === "Revised Twice") {
+      nextStatus = "Mastered";
+    } else {
+      nextStatus = "Revised Once";
+    }
+
+    try {
+      await api.put(`/progress/${probId}`, { status: nextStatus });
+      addToast(`Problem marked as ${nextStatus}!`, "success");
+      if (onRevisionStatusChange) {
+        onRevisionStatusChange();
+      }
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.message || "Failed to update revision status.";
+      addToast(serverMsg, "error");
+    }
   };
 
   const difficultyColors = {
@@ -77,20 +117,35 @@ export function TodayRevisionCard({ revisions, problems, onReviewSelect }: Today
             </p>
           </div>
         ) : (
-          <div className="space-y-2 mt-2">
-            {revisions.slice(0, 3).map((rev) => {
+          <div className="space-y-2 mt-2 max-h-[185px] overflow-y-auto pr-1">
+            {revisions.map((rev) => {
               const diff = getProblemDifficulty(rev.problemId) as "Easy" | "Medium" | "Hard";
               return (
                 <div
                   key={rev.id}
-                  onClick={() => onReviewSelect(rev.problemId)}
                   className="flex items-center justify-between p-2.5 rounded-lg bg-background border border-border hover:border-border-hover hover:bg-muted/30 transition-all cursor-pointer group"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary-hover transition-colors">
-                      {getProblemTitle(rev.problemId)}
-                    </p>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {/* Checkbox Icon */}
+                    <button
+                      onClick={(e) => handleToggleRevision(rev.problemId, e)}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer inline-flex items-center justify-center shrink-0"
+                      title="Mark as Completed"
+                    >
+                      <div className="size-4 rounded-full border border-muted-foreground/60 hover:border-foreground" />
+                    </button>
+
+                    <button
+                      onClick={() => onReviewSelect(rev.problemId)}
+                      className="min-w-0 text-left cursor-pointer flex-1"
+                      title="Review Problem"
+                    >
+                      <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary-hover transition-colors">
+                        {getProblemTitle(rev.problemId)}
+                      </p>
+                    </button>
                   </div>
+
                   <span
                     className={cn(
                       "text-[9px] font-semibold border rounded-full px-2 py-0.5 ml-2",
@@ -102,11 +157,6 @@ export function TodayRevisionCard({ revisions, problems, onReviewSelect }: Today
                 </div>
               );
             })}
-            {revisions.length > 3 && (
-              <p className="text-[10px] text-muted-foreground text-center pt-1 font-medium">
-                + {revisions.length - 3} other items pending...
-              </p>
-            )}
           </div>
         )}
       </div>

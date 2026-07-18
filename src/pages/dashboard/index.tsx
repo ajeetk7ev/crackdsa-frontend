@@ -209,7 +209,9 @@ export function DashboardPage() {
           <TodayRevisionCard
             revisions={dueRevisions}
             problems={problems}
+            progressList={progressList}
             onReviewSelect={handleReviewSelect}
+            onRevisionStatusChange={loadDashboardData}
           />
           <LeetcodeProfileCard />
            <TodayGoalCard 

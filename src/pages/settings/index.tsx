@@ -10,7 +10,6 @@ import {
   User as UserIcon,
   Lock,
   Trash2,
-  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +46,6 @@ export function SettingsPage() {
 
   // Modal Dialog states
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isResetOpen, setIsResetOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Load Settings database Binds
@@ -130,18 +128,7 @@ export function SettingsPage() {
     }
   };
 
-  // 3. Reset All Progress
-  const handleResetProgress = async () => {
-    try {
-      await api.delete("/progress/reset");
-      addToast("All solve progress logs reset successfully.", "success");
-      setIsResetOpen(false);
-      window.location.reload();
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.message || "Failed to reset progress.";
-      addToast(errorMsg, "error");
-    }
-  };
+
 
   // 4. Delete Account permanently
   const handleDeleteAccount = async () => {
@@ -160,11 +147,11 @@ export function SettingsPage() {
     }
   };
 
-  const tabsList = [
-    { id: "profile", label: "Profile", icon: UserIcon },
-    { id: "password", label: "Password", icon: Lock },
-    { id: "danger", label: "Danger Zone", icon: Trash2 },
-  ] as const;
+  const tabsList: { id: SettingsTab; label: string; icon: typeof UserIcon }[] = [
+    { id: "profile" as SettingsTab, label: "Profile", icon: UserIcon },
+    ...(authUser?.provider !== "google" ? [{ id: "password" as SettingsTab, label: "Password", icon: Lock }] : []),
+    { id: "danger" as SettingsTab, label: "Danger Zone", icon: Trash2 },
+  ];
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto text-left">
@@ -288,8 +275,20 @@ export function SettingsPage() {
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
+                  disabled
+                  className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-xs shadow-sm text-muted-foreground select-none cursor-not-allowed"
+                />
+              </div>
+
+              <div className="space-y-1 text-left">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Email Address:
+                </label>
+                <input
+                  type="email"
+                  value={authUser?.email || ""}
+                  disabled
+                  className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-xs shadow-sm text-muted-foreground select-none cursor-not-allowed"
                 />
               </div>
 
@@ -406,30 +405,7 @@ export function SettingsPage() {
                 <p className="text-xs text-muted-foreground mt-0.5">Destructive actions relating to study data and profile credentials.</p>
               </div>
 
-              {/* Action 1: Reset workspace progress */}
-              <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
-                      Reset Solve Logs & Revision Spacings
-                    </p>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      This will reset all coding solves records, spaced repetitions SM2 queue intervals, consistency heatmaps, and target goals. Your account login credentials and profile metadata will be kept.
-                    </p>
-                  </div>
-                </div>
 
-                <div className="pt-2 border-t border-amber-500/10">
-                  <Button
-                    onClick={() => setIsResetOpen(true)}
-                    variant="outline"
-                    className="h-8 text-[11px] text-amber-600 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
-                  >
-                    Reset Progress Only
-                  </Button>
-                </div>
-              </div>
 
               {/* Action 2: Purge Account permanently */}
               <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 space-y-4">
@@ -465,32 +441,7 @@ export function SettingsPage() {
 
       </div>
 
-      {/* RESET CONFIRMATION MODAL */}
-      <Dialog
-        isOpen={isResetOpen}
-        onClose={() => setIsResetOpen(false)}
-        title="Confirm Spaced Revision Reset"
-        description="Are you sure you want to clear your solve statistics?"
-      >
-        <div className="space-y-4 text-left">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            All database correct solve logs, SM-2 next recall schedules, streaks history, and today's goals lists will be wiped out. You will start with a fresh blank canvas dashboard.
-          </p>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-            <Button variant="outline" size="sm" onClick={() => setIsResetOpen(false)} className="text-xs cursor-pointer">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleResetProgress}
-              size="sm"
-              className="text-xs bg-amber-600 text-white hover:bg-amber-700 cursor-pointer shadow-sm"
-            >
-              Reset Solve Logs
-            </Button>
-          </div>
-        </div>
-      </Dialog>
 
       {/* CONFIRM DELETE ACCOUNT MODAL */}
       <Dialog

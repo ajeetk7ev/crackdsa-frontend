@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { useThemeStore } from "@/stores/theme.store";
 import { useAuthStore } from "@/stores/auth.store";
-import { Sun, Moon, Bell, Menu, Sparkles, User, Settings, LogOut } from "lucide-react";
+import { Sun, Moon, Menu, User, Settings, LogOut, Flame } from "lucide-react";
 
 interface NavbarProps {
   onMenuToggle: () => void;
@@ -13,7 +13,7 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const location = useLocation();
-  const [showNotifications, setShowNotifications] = useState(false);
+
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Parse path segments for breadcrumbs
@@ -78,8 +78,20 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
           {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
         </button>
 
-        {/* Notifications Alert Dropdown */}
-        {/* <div className="relative"> */}
+        {/* Streak Indicator */}
+        {user?.streak?.current !== undefined && (
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-400 select-none shadow-sm font-semibold text-xs"
+            title={`${user.streak.current}-Day Solving Streak`}
+          >
+            <Flame className="size-4 text-amber-500 fill-amber-500/10 animate-pulse" />
+            <span>{user.streak.current}</span>
+          </div>
+        )}
+
+        {/* Notifications Alert Dropdown (Commented out for later implementation) */}
+        {/*
+        <div className="relative">
           <button
             onClick={() => setShowNotifications((prev) => !prev)}
             className="relative p-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all cursor-pointer shadow-sm"
@@ -89,7 +101,6 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
             <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive animate-pulse" />
           </button>
 
-          {/* Simple Dropdown overlay */}
           {showNotifications && (
             <>
               <div
@@ -122,7 +133,8 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
               </div>
             </>
           )}
-        {/* </div> */}
+        </div>
+        */}
 
         {/* Profile Avatar Dropdown */}
         <div className="relative">
