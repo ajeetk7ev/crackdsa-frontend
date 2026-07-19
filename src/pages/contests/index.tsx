@@ -3,7 +3,7 @@ import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/loader";
+
 import { ContestCard } from "./components/ContestCard";
 import { ContestStats } from "./components/ContestStats";
 import { ParticipationModal } from "./components/ParticipationModal";
@@ -14,9 +14,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  Award,
-  Target,
+
   ExternalLink,
 } from "lucide-react";
 

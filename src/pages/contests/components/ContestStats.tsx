@@ -15,10 +15,7 @@ interface ContestStatsProps {
 }
 
 export function ContestStats({ stats }: ContestStatsProps) {
-  const solveRate =
-    stats.totalAttempted > 0
-      ? Math.round((stats.totalSolved / (stats.totalSolved + stats.totalAttempted)) * 100)
-      : 0;
+  
 
   const statCards = [
     {

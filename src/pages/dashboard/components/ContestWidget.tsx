@@ -6,9 +6,8 @@ import {
   Clock,
   ChevronRight,
   Swords,
-  ExternalLink,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 
 interface Contest {
   id: string;
