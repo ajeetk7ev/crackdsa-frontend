@@ -17,6 +17,7 @@ import { BookmarksPage } from "@/pages/bookmarks";
 import { ProblemDetailsPage } from "@/pages/problem/details";
 import { RevisionPage } from "@/pages/revision";
 import { CollectionsPage } from "@/pages/collections";
+import { ContestsPage } from "@/pages/contests";
 import { ReportsPage } from "@/pages/reports";
 import { ProfilePage } from "@/pages/profile";
 import { SettingsPage } from "@/pages/settings";
@@ -56,6 +57,7 @@ export function AppRoutes() {
         <Route path="/problems/:id" element={<ProblemDetailsPage />} />
         <Route path="/revision" element={<RevisionPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
+        <Route path="/contests" element={<ContestsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />

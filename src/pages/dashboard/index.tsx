@@ -11,6 +11,7 @@ import { WelcomeHeader } from "./components/WelcomeHeader";
 import { Pomodoro } from "./components/Pomodoro";
 import { TodayRevisionCard, LeetcodeProfileCard, TodayGoalCard } from "./components/TodayActions";
 import { LearningProgress } from "./components/LearningProgress";
+import { ContestWidget } from "./components/ContestWidget";
 
 import { ExternalLink } from "lucide-react";
 
@@ -223,7 +224,15 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* SECTION 3: LEARNING PROGRESS */}
+      {/* SECTION 3: CONTESTS */}
+      <div className="space-y-3">
+        <Typography variant="h3" className="font-semibold text-foreground border-l-2 border-primary pl-2 text-left">
+          Contests
+        </Typography>
+        <ContestWidget />
+      </div>
+
+      {/* SECTION 4: LEARNING PROGRESS */}
       <div className="space-y-3">
         <Typography variant="h3" className="font-semibold text-foreground border-l-2 border-primary pl-2 text-left">
           Consistency Analytics

@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Shield,
   Activity,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/common/Logo";
@@ -36,6 +37,7 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
     { name: "Bookmarked Problems", to: "/bookmarks", icon: Bookmark },
     { name: "Revision Queue", to: "/revision", icon: RefreshCw },
     { name: "Collections", to: "/collections", icon: FolderHeart },
+    { name: "Contests", to: "/contests", icon: Trophy },
   ];
 
   const userNav = [
