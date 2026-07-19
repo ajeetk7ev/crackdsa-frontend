@@ -19,7 +19,7 @@ export function PublicLayout() {
       {/* Public Header */}
       <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-6 md:px-12">
         <Link to="/" className="flex items-center gap-2 select-none">
-          <Logo size={28} />
+          <Logo size={40} />
         </Link>
         <div className="flex items-center gap-4">
           {!isLoading && (

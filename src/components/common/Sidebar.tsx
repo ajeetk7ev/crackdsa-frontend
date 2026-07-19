@@ -101,7 +101,7 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
         {/* Brand Header */}
         <div className="relative flex h-14 items-center justify-between px-4 border-b border-border">
           {!isCollapsed ? (
-            <Logo size={24} />
+            <Logo size={35} className="mx-auto" />
           ) : (
             <Logo size={24} iconOnly={true} className="mx-auto" />
           )}
