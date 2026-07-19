@@ -50,6 +50,7 @@ export function ProblemsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   // Modals state
   const [activeNoteProblemId, setActiveNoteProblemId] = useState<string | null>(null);
@@ -69,6 +70,41 @@ export function ProblemsPage() {
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   const pageSize = 8;
+
+  // Local search state for non-blocking input typing
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  // Sync local search when URL searchQuery changes
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  // Update query params helper
+  const updateQueryParam = (key: string, value: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (value === "All" || !value) {
+      newParams.delete(key);
+    } else {
+      newParams.set(key, value);
+    }
+    if (key !== "page") {
+      newParams.delete("page");
+    }
+    setSearchParams(newParams);
+  };
+
+  // Debounce search query updates
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (localSearch !== (searchParams.get("search") || "")) {
+        updateQueryParam("search", localSearch);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localSearch]);
 
   // Select a random problem and redirect
   const handleRandomProblem = () => {
@@ -109,6 +145,7 @@ export function ProblemsPage() {
       addToast("Failed to fetch problems directory records.", "error");
     } finally {
       setLoading(false);
+      setIsFirstLoad(false);
     }
   };
 
@@ -138,19 +175,6 @@ export function ProblemsPage() {
     loadExplorerData();
   }, [currentPage, filterDifficulty, filterStatus, searchQuery, sortBy]);
 
-  // Update query params helper
-  const updateQueryParam = (key: string, value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value === "All" || !value) {
-      newParams.delete(key);
-    } else {
-      newParams.set(key, value);
-    }
-    if (key !== "page") {
-      newParams.delete("page");
-    }
-    setSearchParams(newParams);
-  };
 
   // Reset all filters action
   const handleResetFilters = () => {
@@ -296,7 +320,7 @@ export function ProblemsPage() {
 
 
 
-  if (loading) {
+  if (isFirstLoad) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto text-left">
         {/* Header Skeleton */}
@@ -404,8 +428,8 @@ export function ProblemsPage() {
           <div className="flex-1">
             <SearchInput
               placeholder="Search by problem name or topic... (e.g. LRU, Graph)"
-              value={searchQuery}
-              onChange={(e) => updateQueryParam("search", e.target.value)}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
               className="w-full"
             />
           </div>
@@ -486,7 +510,20 @@ export function ProblemsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-sm">
-              {paginatedProblems.length === 0 ? (
+              {loading ? (
+                Array.from({ length: pageSize }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-4 py-4"><div className="h-4 w-4 bg-muted rounded-full mx-auto" /></td>
+                    <td className="px-4 py-4"><div className="h-4 w-8 bg-muted rounded font-mono" /></td>
+                    <td className="px-4 py-4"><div className="h-4 w-48 bg-muted rounded" /></td>
+                    <td className="px-4 py-4 text-center"><div className="h-6 w-6 bg-muted rounded mx-auto" /></td>
+                    <td className="px-4 py-4"><div className="h-4.5 w-16 bg-muted rounded-full" /></td>
+                    <td className="px-4 py-4"><div className="h-4 w-20 bg-muted rounded" /></td>
+                    <td className="px-4 py-4"><div className="h-4 w-24 bg-muted rounded" /></td>
+                    <td className="px-4 py-4"><div className="h-8 w-20 bg-muted rounded mx-auto" /></td>
+                  </tr>
+                ))
+              ) : paginatedProblems.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-muted-foreground">
                     <div className="max-w-md mx-auto space-y-2">

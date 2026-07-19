@@ -27,6 +27,7 @@ import {
   Crown,
   Clock,
   Flame,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +52,6 @@ export function CollectionsPage() {
   const addToast = useNotificationStore((state: any) => state.addToast);
 
   // Core Data States
-  const [problems, setProblems] = useState<Problem[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [progressList, setProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +71,27 @@ export function CollectionsPage() {
   const [isAddProblemsOpen, setIsAddProblemsOpen] = useState(false);
   const [addSearchQuery, setAddSearchQuery] = useState("");
   const [tempCheckedIds, setTempCheckedIds] = useState<string[]>([]);
+  const [savingCollectionProblems, setSavingCollectionProblems] = useState(false);
+
+  // Playlist Main Page Table Pagination States
+  const [playlistPage, setPlaylistPage] = useState(1);
+  const [playlistProblems, setPlaylistProblems] = useState<Problem[]>([]);
+  const [totalPlaylistItems, setTotalPlaylistItems] = useState(0);
+  const [totalPlaylistPages, setTotalPlaylistPages] = useState(1);
+  const [loadingPlaylistProblems, setLoadingPlaylistProblems] = useState(false);
+  const [playlistDifficulties, setPlaylistDifficulties] = useState<{ Easy: number; Medium: number; Hard: number }>({
+    Easy: 0,
+    Medium: 0,
+    Hard: 0
+  });
+  const playlistLimit = 10;
+
+  // Infinite Scroll & Search states for Add Problems modal
+  const [modalProblems, setModalProblems] = useState<any[]>([]);
+  const [modalPage, setModalPage] = useState(1);
+  const [modalHasMore, setModalHasMore] = useState(true);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   // Note Modal state (reused from explorer page)
   const [activeNoteProblemId, setActiveNoteProblemId] = useState<string | null>(null);
@@ -85,13 +106,11 @@ export function CollectionsPage() {
   // Load Database values
   const loadCollectionsData = async () => {
     try {
-      const [probRes, colRes, progRes] = await Promise.all([
-        api.get("/problems?limit=1000"),
+      const [colRes, progRes] = await Promise.all([
         api.get("/collections"),
         api.get("/progress")
       ]);
 
-      setProblems(probRes.data.data.problems);
       setCollections(colRes.data.data);
       setProgressList(progRes.data.data);
     } catch {
@@ -108,6 +127,93 @@ export function CollectionsPage() {
   const activeCollection = useMemo(() => {
     return collections.find((c) => c.id === activeCollectionId) || null;
   }, [collections, activeCollectionId]);
+
+  // Fetch collection details (paginated problems)
+  const fetchCollectionDetails = async (id: string, page: number) => {
+    setLoadingPlaylistProblems(true);
+    try {
+      const res = await api.get(`/collections/${id}`, {
+        params: {
+          page,
+          limit: playlistLimit
+        }
+      });
+      setPlaylistProblems(res.data.data.problems || []);
+      setTotalPlaylistItems(res.data.data.pagination.total);
+      setTotalPlaylistPages(res.data.data.pagination.totalPages);
+      setPlaylistDifficulties(res.data.data.difficulties || { Easy: 0, Medium: 0, Hard: 0 });
+    } catch {
+      addToast("Failed to fetch playlist problems.", "error");
+    } finally {
+      setLoadingPlaylistProblems(false);
+    }
+  };
+
+  // Reset page when active collection changes
+  useEffect(() => {
+    setPlaylistPage(1);
+    setPlaylistProblems([]);
+  }, [activeCollectionId]);
+
+  // Fetch playlist problems on page or active collection change
+  useEffect(() => {
+    if (activeCollectionId) {
+      fetchCollectionDetails(activeCollectionId, playlistPage);
+    }
+  }, [activeCollectionId, playlistPage]);
+
+  // Fetch problems list with pagination and search for the add modal
+  const fetchModalProblems = async (page: number, search: string, isNewSearch = false) => {
+    if (modalLoading) return;
+    setModalLoading(true);
+    try {
+      const response = await api.get("/problems", {
+        params: {
+          page,
+          limit: 15,
+          search: search || undefined
+        }
+      });
+      const newProbs = response.data.data.problems || [];
+      const pagination = response.data.data.pagination;
+
+      setModalProblems((prev) => {
+        if (isNewSearch) return newProbs;
+        const existingIds = new Set(prev.map((p) => p.id));
+        const filteredNew = newProbs.filter((p: any) => !existingIds.has(p.id));
+        return [...prev, ...filteredNew];
+      });
+      setModalHasMore(page < (pagination?.totalPages || 1));
+      setModalPage(page);
+    } catch {
+      addToast("Failed to fetch problems list.", "error");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // Debounce search query updates
+  useEffect(() => {
+    if (!isAddProblemsOpen) return;
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(addSearchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [addSearchQuery, isAddProblemsOpen]);
+
+  // Fetch new problems when debounced search query changes
+  useEffect(() => {
+    if (!isAddProblemsOpen) return;
+    fetchModalProblems(1, debouncedSearchQuery, true);
+  }, [debouncedSearchQuery, isAddProblemsOpen]);
+
+  const handleModalScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const isNearBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 40;
+    if (isNearBottom && !modalLoading && modalHasMore) {
+      fetchModalProblems(modalPage + 1, debouncedSearchQuery, false);
+    }
+  };
 
   // Check if problem is solved
   const isProblemSolved = (probId: string) => {
@@ -183,8 +289,13 @@ export function CollectionsPage() {
   const handleOpenAddProblems = () => {
     if (!activeCollection) return;
     setTempCheckedIds([...activeCollection.problemIds]);
+    setModalProblems([]);
+    setModalPage(1);
+    setModalHasMore(true);
     setAddSearchQuery("");
+    setDebouncedSearchQuery("");
     setIsAddProblemsOpen(true);
+    fetchModalProblems(1, "", true);
   };
 
   // Toggle problem select inside dialog checkbox
@@ -200,13 +311,17 @@ export function CollectionsPage() {
   const handleSaveProblemsToCollection = async () => {
     if (!activeCollectionId) return;
 
+    setSavingCollectionProblems(true);
     try {
       await api.put(`/collections/${activeCollectionId}`, { problems: tempCheckedIds });
       addToast("Playlist questions updated.", "success");
       setIsAddProblemsOpen(false);
       loadCollectionsData();
+      fetchCollectionDetails(activeCollectionId, playlistPage);
     } catch {
       addToast("Failed to update playlist questions.", "error");
+    } finally {
+      setSavingCollectionProblems(false);
     }
   };
 
@@ -219,45 +334,22 @@ export function CollectionsPage() {
       await api.put(`/collections/${activeCollectionId}`, { problems: updatedIds });
       addToast("Problem removed from this playlist.", "info");
       loadCollectionsData();
+      fetchCollectionDetails(activeCollectionId, playlistPage);
     } catch {
       addToast("Failed to remove problem.", "error");
     }
   };
 
-  // Resolve problems list for active playlist
-  const activePlaylistProblems = useMemo(() => {
-    if (!activeCollection) return [];
-    return activeCollection.problemIds
-      .map((id) => problems.find((p) => p.id === id))
-      .filter((p): p is Problem => !!p);
-  }, [activeCollection, problems]);
-
   // Statistics calculations for active playlist card
   const activePlaylistStats = useMemo(() => {
-    const total = activePlaylistProblems.length;
-    const solved = activePlaylistProblems.filter((p) => isProblemSolved(p.id)).length;
+    const total = totalPlaylistItems;
+    const solved = activeCollection?.problemIds?.filter((id) => isProblemSolved(id))?.length || 0;
     const remaining = total - solved;
     const percent = total > 0 ? Math.ceil((solved / total) * 100) : 0;
-
-    const difficulties = { Easy: 0, Medium: 0, Hard: 0 };
-    activePlaylistProblems.forEach((p) => {
-      const diff = p.difficulty as "Easy" | "Medium" | "Hard";
-      if (difficulties[diff] !== undefined) {
-        difficulties[diff]++;
-      }
-    });
+    const difficulties = playlistDifficulties;
 
     return { total, solved, remaining, percent, difficulties };
-  }, [activePlaylistProblems, progressList]);
-
-  // Filtered problems list inside dialog
-  const filteredProblemsForAdd = useMemo(() => {
-    if (!addSearchQuery) return problems;
-    const q = addSearchQuery.toLowerCase();
-    return problems.filter(
-      (p) => p.title.toLowerCase().includes(q) || p.topic.toLowerCase().includes(q)
-    );
-  }, [problems, addSearchQuery]);
+  }, [activeCollection, totalPlaylistItems, playlistDifficulties, progressList]);
 
   // Bookmark Toggle
   const handleBookmarkToggle = async (probId: string) => {
@@ -510,7 +602,16 @@ export function CollectionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-sm">
-                  {activePlaylistProblems.length === 0 ? (
+                  {loadingPlaylistProblems ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-muted-foreground">
+                        <div className="flex items-center justify-center gap-2 font-semibold">
+                          <RefreshCw className="size-4 animate-spin text-indigo-500" />
+                          <span>Loading playlist problems...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : totalPlaylistItems === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-muted-foreground">
                         <div className="max-w-md mx-auto space-y-2">
@@ -521,7 +622,7 @@ export function CollectionsPage() {
                       </td>
                     </tr>
                   ) : (
-                    activePlaylistProblems.map((prob) => {
+                    playlistProblems.map((prob) => {
                       const stat = getProblemStatus(prob.id);
                       const isBook = isProblemBookmarked(prob.id);
                       const prog = progressList.find((p) => p.problemId === prob.id);
@@ -662,6 +763,36 @@ export function CollectionsPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Playlist Problems Pagination Footer */}
+            {totalPlaylistPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3.5 border-t border-border bg-muted/10 text-xs text-muted-foreground">
+                <span>
+                  Showing Page <span className="font-semibold text-foreground">{playlistPage}</span> of <span className="font-semibold text-foreground">{totalPlaylistPages}</span> <span className="hidden sm:inline">({totalPlaylistItems} total playlist problems)</span>
+                </span>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={playlistPage <= 1}
+                    onClick={() => setPlaylistPage((prev) => prev - 1)}
+                    className="h-8 text-xs cursor-pointer select-none"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={playlistPage >= totalPlaylistPages}
+                    onClick={() => setPlaylistPage((prev) => prev + 1)}
+                    className="h-8 text-xs cursor-pointer select-none"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
@@ -716,8 +847,8 @@ export function CollectionsPage() {
               {collections.map((col) => {
                 // Calculate card statistics
                 const total = col.problemIds.length;
-                const colProblems = col.problemIds.map(id => problems.find(p => p.id === id)).filter(p => !!p);
-                const solved = colProblems.filter(p => isProblemSolved(p.id)).length;
+                const colProblems = (col as any).problems || [];
+                const solved = colProblems.filter((p: any) => isProblemSolved(p.id)).length;
                 const percent = total > 0 ? Math.ceil((solved / total) * 100) : 0;
 
                 return (
@@ -875,42 +1006,97 @@ export function CollectionsPage() {
             className="w-full text-xs"
           />
 
-          <div className="max-h-60 overflow-y-auto divide-y divide-border border border-border rounded-lg bg-background">
-            {filteredProblemsForAdd.length === 0 ? (
+          <div 
+            onScroll={handleModalScroll}
+            className="max-h-80 overflow-y-auto space-y-2 pr-1 border border-border rounded-lg bg-card/10 p-2"
+          >
+            {modalProblems.length === 0 && !modalLoading ? (
               <p className="text-xs text-muted-foreground text-center py-6">No matching problems found.</p>
             ) : (
-              filteredProblemsForAdd.map((prob) => {
-                const isChecked = tempCheckedIds.includes(prob.id);
-                return (
-                  <div
-                    key={prob.id}
-                    onClick={() => handleToggleProblemInAddDialog(prob.id)}
-                    className="flex items-center gap-3 p-2.5 hover:bg-muted/30 cursor-pointer transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => {}} // handled by click wrapper
-                      className="size-4 accent-indigo-500 cursor-pointer"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-foreground truncate">{prob.title}</p>
-                      <p className="text-[10px] text-muted-foreground">{prob.topic} • {prob.difficulty}</p>
+              <>
+                {modalProblems.map((prob) => {
+                  const isChecked = tempCheckedIds.includes(prob.id);
+                  const diff = (prob.difficulty || "Easy") as "Easy" | "Medium" | "Hard";
+                  
+                  const difficultyColors: Record<string, string> = {
+                    Easy: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
+                    Medium: "text-amber-600 bg-amber-500/10 border-amber-500/20",
+                    Hard: "text-rose-600 bg-rose-500/10 border-rose-500/20",
+                  };
+
+                  return (
+                    <div 
+                      key={prob.id}
+                      onClick={() => handleToggleProblemInAddDialog(prob.id)}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-background border border-border hover:border-border-hover hover:bg-muted/30 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {/* Checkbox Icon */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleProblemInAddDialog(prob.id);
+                          }}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer inline-flex items-center justify-center shrink-0"
+                          title={isChecked ? "Remove selection" : "Select problem"}
+                        >
+                          {isChecked ? (
+                            <CheckCircle2 className="size-4 text-emerald-500 fill-emerald-500/10" />
+                          ) : (
+                            <div className="size-4 rounded-full border border-muted-foreground/60 hover:border-foreground" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (prob.leetcodeUrl) {
+                              window.open(prob.leetcodeUrl, "_blank");
+                            } else {
+                              const slug = prob.title.toLowerCase().replace(/ /g, "-");
+                              window.open(`https://leetcode.com/problems/${slug}/`, "_blank");
+                            }
+                          }}
+                          className="min-w-0 text-left cursor-pointer flex-1"
+                          title="Solve on LeetCode"
+                        >
+                          <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary-hover transition-colors">
+                            {prob.title}
+                          </p>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                        <span className={cn(
+                          "text-[9px] font-semibold border rounded-full px-2 py-0.5",
+                          difficultyColors[diff]
+                        )}>
+                          {diff}
+                        </span>
+                      </div>
                     </div>
+                  );
+                })}
+                {modalLoading && (
+                  <div className="py-4 text-center text-xs text-muted-foreground font-semibold flex items-center justify-center gap-2">
+                    <RefreshCw className="size-3.5 animate-spin text-indigo-500" />
+                    <span>Loading more problems...</span>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </div>
 
           <div className="flex justify-between items-center pt-2 border-t border-border/40 text-xs text-muted-foreground">
             <span>{tempCheckedIds.length} problems selected</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setIsAddProblemsOpen(false)} className="text-xs cursor-pointer">
+              <Button variant="outline" size="sm" onClick={() => setIsAddProblemsOpen(false)} disabled={savingCollectionProblems} className="text-xs cursor-pointer">
                 Cancel
               </Button>
-              <Button onClick={handleSaveProblemsToCollection} size="sm" className="text-xs cursor-pointer shadow-sm">
-                Done
+              <Button onClick={handleSaveProblemsToCollection} disabled={savingCollectionProblems} size="sm" className="text-xs cursor-pointer shadow-sm">
+                {savingCollectionProblems ? "Saving..." : "Done"}
               </Button>
             </div>
           </div>

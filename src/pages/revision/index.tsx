@@ -17,7 +17,6 @@ import {
   Flame,
   Clock,
   Sparkles,
-  TrendingUp,
   CircleDashed,
   Zap,
   Crown,
@@ -368,21 +367,53 @@ export function RevisionPage() {
           </Button>
         </div>
 
-        {/* SECTION 2: TODAY'S REVISION PROGRESS BAR */}
-        <div className="col-span-full lg:col-span-2 order-2 lg:order-3 p-6 rounded-xl border border-border bg-card shadow-sm space-y-3">
-          <div className="flex justify-between items-baseline text-xs">
-            <span className="font-bold text-muted-foreground uppercase">Today's Progress</span>
-            <span className="font-semibold text-foreground">
-              {stats.completedTodayCount} / {totalTodayTasks} Revised ({progressPercent}%)
-            </span>
+        {/* SECTION 2: TODAY'S REVISION PROGRESS BAR & STATS CARD */}
+        <div className="col-span-full lg:col-span-2 order-2 lg:order-3 p-6 rounded-xl border border-border bg-card shadow-sm space-y-6">
+          {/* Progress bar info */}
+          <div className="space-y-3 text-left">
+            <div className="flex justify-between items-baseline text-xs">
+              <span className="font-bold text-muted-foreground uppercase">Today's Progress</span>
+              <span className="font-semibold text-foreground">
+                {stats.completedTodayCount} / {totalTodayTasks} Revised ({progressPercent}%)
+              </span>
+            </div>
+            
+            {/* Progress bar line */}
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
-          
-          {/* Progress bar line */}
-          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300 ease-out"
-              style={{ width: `${progressPercent}%` }}
-            />
+
+          <div className="border-t border-border/40" />
+
+          {/* Recall Statistics details */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Today's Accuracy</span>
+              <span className="text-sm font-semibold text-foreground">{todayAccuracy}</span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Completed Solves</span>
+              <span className="text-sm font-semibold text-foreground">{stats.recallStats.completedSolves}</span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Current Streak</span>
+              <span className="text-sm font-semibold text-foreground flex items-center gap-0.5">
+                <Flame className="size-3.5 text-amber-500 fill-amber-500/10" /> {activeStreak} Days
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Mastered Items</span>
+              <span className="text-sm font-semibold text-foreground flex items-center gap-0.5">
+                <Sparkles className="size-3.5 text-purple-500 fill-purple-500/10" /> {masteredCount} Items
+              </span>
+            </div>
           </div>
         </div>
 
@@ -437,44 +468,8 @@ export function RevisionPage() {
           </div>
         </div>
 
-        {/* SECTION 7: REVISION STATISTICS (TINY STATS) */}
-        <div className="col-span-full lg:col-span-1 order-5 p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
-          <div className="border-b border-border pb-3 flex items-center justify-between">
-            <Typography variant="title" className="text-foreground font-semibold">
-              Recall Statistics
-            </Typography>
-            <TrendingUp className="size-4 text-emerald-500" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Today's Accuracy</span>
-              <span className="text-sm font-semibold text-foreground">{todayAccuracy}</span>
-            </div>
-
-            <div>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Completed Solves</span>
-              <span className="text-sm font-semibold text-foreground">{stats.recallStats.completedSolves}</span>
-            </div>
-
-            <div>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Current Streak</span>
-              <span className="text-sm font-semibold text-foreground flex items-center gap-0.5">
-                <Flame className="size-3.5 text-amber-500 fill-amber-500/10" /> {activeStreak} Days
-              </span>
-            </div>
-
-            <div>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Mastered Items</span>
-              <span className="text-sm font-semibold text-foreground flex items-center gap-0.5">
-                <Sparkles className="size-3.5 text-purple-500 fill-purple-500/10" /> {masteredCount} Items
-              </span>
-            </div>
-          </div>
-        </div>
-
         {/* SECTION 4: SELECT DROPDOWN FILTERS & SECTION 3: REVISION QUEUE DATA TABLE (Unified into a single layout section) */}
-        <div className="col-span-full lg:col-span-2 order-6 space-y-6">
+        <div className="col-span-full order-6 space-y-6">
           
           <div className="flex flex-col sm:flex-row gap-3 border-b border-border pb-4">
             <div className="flex items-center gap-2">
