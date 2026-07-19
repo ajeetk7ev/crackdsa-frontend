@@ -21,6 +21,10 @@ import { ContestsPage } from "@/pages/contests";
 import { ReportsPage } from "@/pages/reports";
 import { ProfilePage } from "@/pages/profile";
 import { SettingsPage } from "@/pages/settings";
+import { SheetsPage } from "@/pages/sheets";
+import { SheetDetailsPage } from "@/pages/sheets/details";
+import { AdminSheetsPage } from "@/pages/admin/sheets";
+import { AdminSheetsFormPage } from "@/pages/admin/sheets/form";
 import { AdminDashboardPage } from "@/pages/admin/dashboard";
 import { AdminProblemsPage } from "@/pages/admin/problems";
 import { AdminUsersPage } from "@/pages/admin/users";
@@ -58,6 +62,8 @@ export function AppRoutes() {
         <Route path="/revision" element={<RevisionPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/contests" element={<ContestsPage />} />
+        <Route path="/sheets" element={<SheetsPage />} />
+        <Route path="/sheets/:id" element={<SheetDetailsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
@@ -69,6 +75,9 @@ export function AppRoutes() {
         <Route path="/admin/problems" element={<AdminProblemsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+        <Route path="/admin/sheets" element={<AdminSheetsPage />} />
+        <Route path="/admin/sheets/new" element={<AdminSheetsFormPage />} />
+        <Route path="/admin/sheets/edit/:id" element={<AdminSheetsFormPage />} />
       </Route>
 
       {/* 5. 404 Fallback */}

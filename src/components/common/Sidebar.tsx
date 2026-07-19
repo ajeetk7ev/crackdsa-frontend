@@ -17,6 +17,7 @@ import {
   Shield,
   Activity,
   Trophy,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/common/Logo";
@@ -38,6 +39,7 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
     { name: "Revision Queue", to: "/revision", icon: RefreshCw },
     { name: "Collections", to: "/collections", icon: FolderHeart },
     { name: "Contests", to: "/contests", icon: Trophy },
+    { name: "DSA Sheets", to: "/sheets", icon: Layers },
   ];
 
   const userNav = [
@@ -50,6 +52,7 @@ export function Sidebar({ isOpenOnMobile, setIsOpenOnMobile }: SidebarProps) {
     { name: "Admin Problems", to: "/admin/problems", icon: Database },
     { name: "Admin Users", to: "/admin/users", icon: Users },
     { name: "Admin Analytics", to: "/admin/analytics", icon: Activity },
+    { name: "Admin DSA Sheets", to: "/admin/sheets", icon: Layers },
   ];
 
   const renderNavGroup = (title: string, items: typeof mainNav) => (
