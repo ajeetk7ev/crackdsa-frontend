@@ -13,11 +13,11 @@ import {
   ArrowUpRight, 
   CheckCircle2, 
   ExternalLink,
-  Award,
   Link2Off,
   UserCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 
 interface RevisionItem {
   id: string;
@@ -290,7 +290,7 @@ export function LeetcodeProfileCard() {
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left min-h-[300px]">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <Typography variant="title" className="flex items-center gap-1.5 text-foreground">
-            <Award className="size-4 text-muted-foreground" />
+            <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain dark:invert" />
             LeetCode Profile
           </Typography>
           <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">
@@ -341,7 +341,7 @@ export function LeetcodeProfileCard() {
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left min-h-[300px]">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <Typography variant="title" className="flex items-center gap-1.5 text-foreground">
-            <Award className="size-4 text-rose-500 animate-pulse" />
+            <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain dark:invert animate-pulse" />
             LeetCode Profile
           </Typography>
           <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-2 py-0.5 rounded-full uppercase">
@@ -382,7 +382,7 @@ export function LeetcodeProfileCard() {
     <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left min-h-[300px]">
       <div className="flex items-center justify-between border-b border-border pb-3">
         <Typography variant="title" className="flex items-center gap-1.5 text-foreground">
-          <Award className="size-4 text-amber-500 animate-in spin-in-12 duration-500" />
+          <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain dark:invert" />
           LeetCode Profile
         </Typography>
         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
@@ -612,9 +612,10 @@ export function TodayGoalCard({
 
                     <button
                       onClick={() => handleRedirectToLeetcode(prob.title)}
-                      className="min-w-0 text-left cursor-pointer flex-1"
+                      className="min-w-0 text-left cursor-pointer flex-1 flex items-center gap-1.5"
                       title="Solve on LeetCode"
                     >
+                      <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain shrink-0 dark:invert" />
                       <p className={cn(
                         "text-xs font-semibold text-foreground truncate group-hover:text-primary-hover transition-colors",
                         solved ? "line-through text-muted-foreground font-normal" : ""

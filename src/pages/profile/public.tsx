@@ -13,6 +13,7 @@ import {
   Code,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 
 
 
@@ -407,7 +408,7 @@ export function PublicProfilePage() {
             <div className="space-y-4">
               <div className="flex justify-between items-start border-b border-border/30 pb-3">
                 <div className="flex items-center gap-2">
-                  <Code className="size-5 text-amber-500" />
+                  <img src={leetcodeLogo} alt="LeetCode" className="size-5 object-contain dark:invert" />
                   <div>
                     <Typography variant="title" className="text-foreground block">
                       LeetCode Profile

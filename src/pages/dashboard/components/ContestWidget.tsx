@@ -5,8 +5,9 @@ import {
   Trophy,
   Clock,
   ChevronRight,
-  Swords,
 } from "lucide-react";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
+import codeforcesLogo from "@/assets/codeforce-logo.png";
 
 
 interface Contest {
@@ -72,9 +73,9 @@ function NextContestMini({ contest }: { contest: Contest }) {
         }`}
       >
         {isLeetcode ? (
-          <Trophy className={`size-4 text-amber-500`} />
+          <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain dark:invert" />
         ) : (
-          <Swords className={`size-4 text-blue-500`} />
+          <img src={codeforcesLogo} alt="Codeforces" className="size-4 object-contain" />
         )}
       </div>
       <div className="min-w-0 flex-1">

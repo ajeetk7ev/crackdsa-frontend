@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/loader";
 import { Save, Trophy } from "lucide-react";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
+import codeforcesLogo from "@/assets/codeforce-logo.png";
 
 interface Contest {
   id: string;
@@ -130,7 +132,13 @@ export function ParticipationModal({
       <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
         {/* Contest Info Header */}
         <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
-          <Trophy className="size-5 text-primary shrink-0" />
+          {contest.platform === "codeforces" ? (
+            <img src={codeforcesLogo} alt="Codeforces" className="size-5 object-contain shrink-0" />
+          ) : contest.platform === "leetcode" ? (
+            <img src={leetcodeLogo} alt="LeetCode" className="size-5 object-contain dark:invert shrink-0" />
+          ) : (
+            <Trophy className="size-5 text-primary shrink-0" />
+          )}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground truncate">{contest.name}</p>
             <p className="text-xs text-muted-foreground">
@@ -142,7 +150,13 @@ export function ParticipationModal({
               })}
             </p>
           </div>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${platformBadge}`}>
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border flex items-center gap-1.5 ${platformBadge}`}>
+            {contest.platform === "codeforces" && (
+              <img src={codeforcesLogo} alt="Codeforces" className="size-3 object-contain" />
+            )}
+            {contest.platform === "leetcode" && (
+              <img src={leetcodeLogo} alt="LeetCode" className="size-3 object-contain dark:invert" />
+            )}
             {contest.platform}
           </span>
         </div>

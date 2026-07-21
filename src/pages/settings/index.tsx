@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 
 import { api } from "@/lib/axios";
 
@@ -293,7 +294,8 @@ export function SettingsPage() {
               </div>
 
               <div className="space-y-1 text-left">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block flex items-center gap-1.5">
+                  <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain dark:invert" />
                   LeetCode Username:
                 </label>
                 <input

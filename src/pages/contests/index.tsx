@@ -17,6 +17,8 @@ import {
 
   ExternalLink,
 } from "lucide-react";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
+import codeforcesLogo from "@/assets/codeforce-logo.png";
 
 interface Contest {
   id: string;
@@ -264,13 +266,19 @@ export function ContestsPage() {
               <button
                 key={pf}
                 onClick={() => setPlatformFilter(pf)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer border inline-flex items-center gap-1.5 ${
                   platformFilter === pf
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50"
                 }`}
               >
-                {pf === "all" ? "All Platforms" : pf.charAt(0).toUpperCase() + pf.slice(1)}
+                {pf === "leetcode" && (
+                  <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain dark:invert" />
+                )}
+                {pf === "codeforces" && (
+                  <img src={codeforcesLogo} alt="Codeforces" className="size-3.5 object-contain" />
+                )}
+                {pf === "all" ? "All Platforms" : pf === "leetcode" ? "LeetCode" : "Codeforces"}
               </button>
             ))}
           </div>
@@ -358,11 +366,17 @@ export function ContestsPage() {
                             </td>
                             <td className="px-4 py-3">
                               <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                                   platformBgColors[contest?.platform] || "bg-muted/30 border-border"
                                 } ${platformColors[contest?.platform] || "text-muted-foreground"}`}
                               >
-                                {contest?.platform || "—"}
+                                {contest?.platform === "leetcode" && (
+                                  <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain dark:invert" />
+                                )}
+                                {contest?.platform === "codeforces" && (
+                                  <img src={codeforcesLogo} alt="Codeforces" className="size-3.5 object-contain" />
+                                )}
+                                {contest?.platform ? (contest.platform === "leetcode" ? "LeetCode" : contest.platform === "codeforces" ? "Codeforces" : contest.platform) : "—"}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-center">

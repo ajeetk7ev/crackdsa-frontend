@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import {
   Clock,
   ExternalLink,
-  Trophy,
-  Swords,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
+import codeforcesLogo from "@/assets/codeforce-logo.png";
 
 interface Contest {
   id: string;
@@ -106,9 +106,9 @@ export function ContestCard({ contest, onLogParticipation }: ContestCardProps) {
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${config.bg} ${config.borderColor} ${config.color}`}
           >
             {contest.platform === "codeforces" ? (
-              <Swords className="size-3" />
+              <img src={codeforcesLogo} alt="Codeforces" className="size-3.5 object-contain" />
             ) : (
-              <Trophy className="size-3" />
+              <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain dark:invert" />
             )}
             {contest.platform}
           </span>
