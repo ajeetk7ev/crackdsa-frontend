@@ -20,11 +20,7 @@ import {
   Award,
   Zap,
   Grid,
-  Cpu,
-  GitMerge,
-  Share2,
-  Terminal,
-  Search
+  GitMerge
 } from "lucide-react";
 
 interface Sheet {

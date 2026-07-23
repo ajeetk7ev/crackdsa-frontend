@@ -10,7 +10,6 @@ import {
   Activity,
   Calendar,
   ExternalLink,
-  Code,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import leetcodeLogo from "@/assets/LeetCode_logo_black.png";

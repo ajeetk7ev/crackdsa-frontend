@@ -17,8 +17,7 @@ import { CompanyBadge, TopicBadge } from "@/components/common/BadgeUtils";
 import {
   Bookmark,
   FileText,
-  Eye,
-  XCircle,
+    XCircle,
   RotateCcw,
   RefreshCw,
   CircleDashed,
@@ -30,7 +29,6 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
-  Compass,
   Code2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -681,8 +679,7 @@ export function ProblemsPage() {
           onClose={() => setStatusModalProblem(null)}
           problemId={statusModalProblem.id}
           problemTitle={statusModalProblem.title}
-          currentStatus={progressList.find((p) => p.problemId === statusModalProblem.id)?.status || "Not Started"}
-          onSuccess={() => {
+          onStatusUpdated={() => {
             loadExplorerData();
           }}
         />
@@ -692,7 +689,10 @@ export function ProblemsPage() {
         <PomodoroPromptModal
           isOpen={!!pomodoroPromptProblem}
           onClose={() => setPomodoroPromptProblem(null)}
-          problem={pomodoroPromptProblem}
+          problemId={pomodoroPromptProblem.id}
+          problemTitle={pomodoroPromptProblem.title}
+          difficulty={pomodoroPromptProblem.difficulty}
+          leetcodeUrl={pomodoroPromptProblem.leetcodeUrl}
         />
       )}
 
