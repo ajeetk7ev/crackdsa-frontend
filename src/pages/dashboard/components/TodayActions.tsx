@@ -341,7 +341,7 @@ export function LeetcodeProfileCard() {
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left min-h-[300px]">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <Typography variant="title" className="flex items-center gap-1.5 text-foreground">
-            <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain dark:invert animate-pulse" />
+            <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain animate-pulse" />
             LeetCode Profile
           </Typography>
           <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-2 py-0.5 rounded-full uppercase">
@@ -382,7 +382,7 @@ export function LeetcodeProfileCard() {
     <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 flex flex-col justify-between h-full text-left min-h-[300px]">
       <div className="flex items-center justify-between border-b border-border pb-3">
         <Typography variant="title" className="flex items-center gap-1.5 text-foreground">
-          <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain dark:invert" />
+          <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain" />
           LeetCode Profile
         </Typography>
         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
