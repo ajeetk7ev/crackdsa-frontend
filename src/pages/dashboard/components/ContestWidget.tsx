@@ -73,7 +73,7 @@ function NextContestMini({ contest }: { contest: Contest }) {
         }`}
       >
         {isLeetcode ? (
-          <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain dark:invert" />
+          <img src={leetcodeLogo} alt="LeetCode" className="size-4 object-contain" />
         ) : (
           <img src={codeforcesLogo} alt="Codeforces" className="size-4 object-contain" />
         )}

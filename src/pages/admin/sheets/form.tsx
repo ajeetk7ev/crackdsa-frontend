@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
 import { Typography } from "@/components/ui/typography";
@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { Dialog } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight, Save, Eye } from "lucide-react";
+import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight, Save } from "lucide-react";
 
 interface Problem {
   id: string;
@@ -22,10 +23,13 @@ interface Problem {
 export function AdminSheetsFormPage() {
   const { id: sheetId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const addToast = useNotificationStore((state: any) => state.addToast);
 
   const isEdit = !!sheetId;
-  const [activeStep, setActiveStep] = useState<1 | 2>(1);
+  const [activeStep, setActiveStep] = useState<1 | 2>(
+    location.state?.step === 2 ? 2 : 1
+  );
   const [loading, setLoading] = useState(false);
 
   // Step 1: Sheet Form State
@@ -111,7 +115,7 @@ export function AdminSheetsFormPage() {
       } else {
         const res = await api.post("/sheets", sheetForm);
         addToast("Sheet created successfully. Now add problems.", "success");
-        navigate(`/admin/sheets/edit/${res.data.data.id}`);
+        navigate(`/admin/sheets/edit/${res.data.data.id}`, { state: { step: 2 } });
         setActiveStep(2);
       }
     } catch {
@@ -251,7 +255,9 @@ export function AdminSheetsFormPage() {
       {activeStep === 1 && (
         <form onSubmit={handleSheetSubmit} className="space-y-4 bg-card border border-border rounded-xl p-6">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-foreground">Sheet Title</label>
+            <label className="text-xs font-semibold text-foreground">
+              Sheet Title <span className="text-rose-500 ml-0.5">*</span>
+            </label>
             <Input
               required
               placeholder="e.g. Striver SDE Sheet"
@@ -262,7 +268,9 @@ export function AdminSheetsFormPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-foreground">Author</label>
+            <label className="text-xs font-semibold text-foreground">
+              Author <span className="text-rose-500 ml-0.5">*</span>
+            </label>
             <Input
               required
               placeholder="e.g. Striver"
@@ -273,7 +281,9 @@ export function AdminSheetsFormPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-foreground">Estimated Time (e.g. 60 days, 3 months)</label>
+            <label className="text-xs font-semibold text-foreground">
+              Estimated Time <span className="text-rose-500 ml-0.5">*</span> <span className="text-[10px] text-muted-foreground font-normal">(e.g. 60 days, 3 months)</span>
+            </label>
             <Input
               required
               placeholder="e.g. 60 days"
@@ -284,7 +294,9 @@ export function AdminSheetsFormPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-foreground">Description</label>
+            <label className="text-xs font-semibold text-foreground">
+              Description <span className="text-rose-500 ml-0.5">*</span>
+            </label>
             <Textarea
               required
               placeholder="Provide a detailed description of this sheet..."
@@ -416,17 +428,17 @@ export function AdminSheetsFormPage() {
       )}
 
       {/* Add/Edit Problem Modal */}
-      <ConfirmDialog
+      <Dialog
         isOpen={problemModalOpen}
         onClose={() => setProblemModalOpen(false)}
-        onConfirm={() => {}} // Form handles submit
         title={editingProblem ? "Edit Problem" : "Add Problem to Sheet"}
-        description=""
       >
         <form onSubmit={handleProblemSave} className="space-y-4 text-left">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Problem ID</label>
+              <label className="text-xs font-semibold text-foreground">
+                Problem ID <span className="text-rose-500 ml-0.5">*</span>
+              </label>
               <Input
                 required
                 disabled={!!editingProblem}
@@ -437,7 +449,9 @@ export function AdminSheetsFormPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Topic / Category</label>
+              <label className="text-xs font-semibold text-foreground">
+                Topic / Category <span className="text-rose-500 ml-0.5">*</span>
+              </label>
               <Input
                 required
                 placeholder="e.g. Array, Dynamic Programming"
@@ -449,7 +463,9 @@ export function AdminSheetsFormPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-foreground">Title</label>
+            <label className="text-xs font-semibold text-foreground">
+              Title <span className="text-rose-500 ml-0.5">*</span>
+            </label>
             <Input
               required
               placeholder="e.g. Two Sum"
@@ -461,10 +477,12 @@ export function AdminSheetsFormPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Difficulty</label>
+              <label className="text-xs font-semibold text-foreground">
+                Difficulty Level <span className="text-rose-500 ml-0.5">*</span>
+              </label>
               <Select
                 value={problemForm.difficulty}
-                onChange={val => setProblemForm({ ...problemForm, difficulty: val })}
+                onChange={e => setProblemForm({ ...problemForm, difficulty: e.target.value })}
                 options={[
                   { label: "Easy", value: "Easy" },
                   { label: "Medium", value: "Medium" },
@@ -474,7 +492,9 @@ export function AdminSheetsFormPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">LeetCode URL</label>
+              <label className="text-xs font-semibold text-foreground">
+                LeetCode URL <span className="text-rose-500 ml-0.5">*</span>
+              </label>
               <Input
                 required
                 placeholder="https://leetcode.com/problems/..."
@@ -486,7 +506,9 @@ export function AdminSheetsFormPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-foreground">Company Tags (Comma separated)</label>
+            <label className="text-xs font-semibold text-foreground">
+              Company Tags <span className="text-[10px] text-muted-foreground font-normal">(Optional, comma separated)</span>
+            </label>
             <Input
               placeholder="e.g. Google, Microsoft, Meta"
               value={problemForm.companies}
@@ -516,7 +538,7 @@ export function AdminSheetsFormPage() {
             </Button>
           </div>
         </form>
-      </ConfirmDialog>
+      </Dialog>
 
       <ConfirmDialog
         isOpen={deleteProblemId !== null}

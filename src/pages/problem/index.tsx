@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 import { StatusChangeModal } from "@/components/common/StatusChangeModal";
 import { PomodoroPromptModal } from "@/components/common/PomodoroPromptModal";
+import { CompanyBadge, TopicBadge } from "@/components/common/BadgeUtils";
 
 import {
   Bookmark,
@@ -27,28 +28,39 @@ import {
   Clock,
   Flame,
   Target,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  Code2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Problem {
   id: string;
+  dbId?: string;
   title: string;
   difficulty: string;
   topic: string;
-  solvedCount: number;
+  leetcodeUrl: string;
+  companies: string[];
 }
 
-
+interface StatsMeta {
+  total: number;
+  solved: number;
+  percentage: number;
+}
 
 export function ProblemsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   // Data State
   const [problems, setProblems] = useState<Problem[]>([]);
   const [progressList, setProgressList] = useState<any[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [stats, setStats] = useState<StatsMeta>({ total: 0, solved: 0, percentage: 0 });
   const [loading, setLoading] = useState(true);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
@@ -66,20 +78,18 @@ export function ProblemsPage() {
   const searchQuery = searchParams.get("search") || "";
   const filterDifficulty = searchParams.get("difficulty") || "All";
   const filterStatus = searchParams.get("status") || "All";
+  const filterCompany = searchParams.get("company") || "All";
   const sortBy = searchParams.get("sort") || "id";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
-
-  const pageSize = 8;
+  const pageSize = 10;
 
   // Local search state for non-blocking input typing
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
-  // Sync local search when URL searchQuery changes
   useEffect(() => {
     setLocalSearch(searchQuery);
   }, [searchQuery]);
 
-  // Update query params helper
   const updateQueryParam = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
     if (value === "All" || !value) {
@@ -100,13 +110,9 @@ export function ProblemsPage() {
         updateQueryParam("search", localSearch);
       }
     }, 300);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    return () => clearTimeout(handler);
   }, [localSearch]);
 
-  // Select a random problem and redirect
   const handleRandomProblem = () => {
     if (problems.length === 0) return;
     const randomIndex = Math.floor(Math.random() * problems.length);
@@ -115,18 +121,20 @@ export function ProblemsPage() {
     navigate(`/problems/${randomProb.id}`);
   };
 
-  // Load Data
+  // Load standalone problems data
   const loadExplorerData = async () => {
     try {
       setLoading(true);
       const [probRes, progRes, goalRes] = await Promise.all([
         api.get("/problems", {
           params: {
+            standalone: "true", // Fetch ONLY problems not tied to any DSA sheet
             page: currentPage,
             limit: pageSize,
             difficulty: filterDifficulty,
             search: searchQuery,
             status: filterStatus,
+            company: filterCompany,
             sort: sortBy
           }
         }),
@@ -134,20 +142,36 @@ export function ProblemsPage() {
         api.get("/goals/today").catch(() => null)
       ]);
 
-      setProblems(probRes.data.data.problems);
-      setTotalItems(probRes.data.data.pagination.total);
-      setTotalPages(probRes.data.data.pagination.totalPages);
-      setProgressList(progRes.data.data);
+      const data = probRes.data.data;
+      setProblems(data.problems || []);
+      setTotalItems(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 1);
+      
+      if (data.stats) {
+        setStats(data.stats);
+      } else {
+        setStats({
+          total: data.pagination?.total || 0,
+          solved: 0,
+          percentage: 0
+        });
+      }
+
+      setProgressList(progRes.data.data || []);
       if (goalRes) {
         setGoalIds(goalRes.data.data.problemIds);
       }
     } catch {
-      addToast("Failed to fetch problems directory records.", "error");
+      addToast("Failed to fetch standalone problems directory records.", "error");
     } finally {
       setLoading(false);
       setIsFirstLoad(false);
     }
   };
+
+  useEffect(() => {
+    loadExplorerData();
+  }, [currentPage, filterDifficulty, filterStatus, filterCompany, searchQuery, sortBy]);
 
   const handleGoalToggle = async (probId: string) => {
     let newGoals: string[];
@@ -156,12 +180,12 @@ export function ProblemsPage() {
       newGoals = goalIds.filter((id) => id !== probId);
     } else {
       if (goalIds.length >= 8) {
-        addToast("We recommend focusing on up to 8 goals per day to prevent burn out.", "warning");
+        addToast("We recommend focusing on up to 8 goals per day.", "warning");
         return;
       }
       newGoals = [...goalIds, probId];
     }
-    
+
     try {
       const res = await api.post("/goals/today", { problems: newGoals });
       setGoalIds(res.data.data.problemIds);
@@ -171,25 +195,18 @@ export function ProblemsPage() {
     }
   };
 
-  useEffect(() => {
-    loadExplorerData();
-  }, [currentPage, filterDifficulty, filterStatus, searchQuery, sortBy]);
-
-
-  // Reset all filters action
   const handleResetFilters = () => {
     setSearchParams(new URLSearchParams());
     addToast("All problem filters cleared.", "info");
   };
 
-  // Toggle Bookmark logic
   const handleBookmarkToggle = async (probId: string) => {
     const prog = progressList.find((p) => p.problemId === probId);
     const currentlyBookmarked = prog ? prog.isBookmarked : false;
     try {
       await api.put(`/progress/${probId}`, { isBookmarked: !currentlyBookmarked });
       addToast(
-        currentlyBookmarked ? "Problem removed from bookmarks." : "Problem bookmarked successfully.",
+        currentlyBookmarked ? "Removed from bookmarks." : "Problem bookmarked.",
         currentlyBookmarked ? "info" : "success"
       );
       loadExplorerData();
@@ -198,12 +215,6 @@ export function ProblemsPage() {
     }
   };
 
-  const isProblemBookmarked = (probId: string) => {
-    const prog = progressList.find((p) => p.problemId === probId);
-    return prog ? prog.isBookmarked : false;
-  };
-
-  // Problem Status Resolver
   const getProblemStatus = (probId: string) => {
     const prog = progressList.find((p) => p.problemId === probId);
     if (!prog) {
@@ -264,37 +275,30 @@ export function ProblemsPage() {
     };
   };
 
-  // Last revised relative dates
   const getLastRevisedLabel = (problemId: string) => {
     const prog = progressList.find((p) => p.problemId === problemId);
     if (!prog) return "Never";
-    
     const dateVal = prog.lastSolved || prog.updatedAt;
     if (!dateVal) return "Never";
-    
     const latest = new Date(dateVal);
     if (isNaN(latest.getTime())) return "Never";
-    
     return latest.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric",
+      year: "numeric"
     });
   };
 
-  // Open Status Dialog
   const handleOpenStatusModal = (id: string, title: string) => {
     setStatusModalProblem({ id, title });
   };
 
-  // Open Notes Dialog
   const handleOpenNoteModal = (probId: string) => {
     setActiveNoteProblemId(probId);
     const prog = progressList.find((p) => p.problemId === probId);
     setActiveNoteText(prog?.note || "");
   };
 
-  // Save Notes Dialog
   const handleSaveNotes = async () => {
     if (!activeNoteProblemId) return;
     setSavingNote(true);
@@ -310,80 +314,13 @@ export function ProblemsPage() {
     }
   };
 
-  const paginatedProblems = problems;
-
-  // Aggregate Header stats
-  const solvedCount = progressList.filter((p) =>
-    ["Solved", "Revised Once", "Revised Twice", "Mastered"].includes(p.status)
-  ).length;
-  const percentComplete = totalItems > 0 ? Math.ceil((solvedCount / totalItems) * 100) : 0;
-
-
-
   if (isFirstLoad) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto text-left">
-        {/* Header Skeleton */}
+      <div className="space-y-6 max-w-7xl mx-auto text-left animate-pulse">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-border pb-4 gap-4">
           <div className="space-y-2">
-            <Skeleton className="h-9 w-64 animate-pulse" />
-            <Skeleton className="h-4 w-96 animate-pulse" />
-          </div>
-          <div className="flex gap-4 p-4 bg-card border border-border rounded-xl shadow-sm shrink-0">
-            <div className="space-y-2 w-16 text-center">
-              <Skeleton className="h-6 w-10 mx-auto animate-pulse" />
-              <Skeleton className="h-3 w-12 mx-auto animate-pulse" />
-            </div>
-            <div className="w-[1px] h-8 bg-border" />
-            <div className="space-y-2 w-16 text-center">
-              <Skeleton className="h-6 w-10 mx-auto animate-pulse" />
-              <Skeleton className="h-3 w-12 mx-auto animate-pulse" />
-            </div>
-            <div className="w-[1px] h-8 bg-border" />
-            <div className="space-y-2 w-16 text-center">
-              <Skeleton className="h-6 w-10 mx-auto animate-pulse" />
-              <Skeleton className="h-3.5 w-14 mx-auto rounded-full animate-pulse" />
-            </div>
-          </div>
-        </div>
-
-        {/* Filter bar Skeleton */}
-        <div className="flex flex-col gap-3 py-4 border-b border-border">
-          <div className="flex flex-col md:flex-row gap-3">
-            <Skeleton className="h-9 flex-1 animate-pulse" />
-            <Skeleton className="h-9 w-28 animate-pulse" />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <Skeleton className="h-9 w-full animate-pulse" />
-            <Skeleton className="h-9 w-full animate-pulse" />
-            <Skeleton className="h-9 w-full animate-pulse" />
-            <Skeleton className="h-9 w-full animate-pulse" />
-          </div>
-        </div>
-
-        {/* Table Skeleton matching the actual columns */}
-        <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden">
-          <div className="bg-muted/40 p-4 border-b border-border flex justify-between gap-4">
-            <Skeleton className="h-4 w-12 animate-pulse" />
-            <Skeleton className="h-4 w-16 animate-pulse" />
-            <Skeleton className="h-4 w-1/3 animate-pulse" />
-            <Skeleton className="h-4 w-16 animate-pulse" />
-            <Skeleton className="h-4 w-20 animate-pulse" />
-            <Skeleton className="h-4 w-24 animate-pulse" />
-            <Skeleton className="h-4 w-20 animate-pulse" />
-          </div>
-          <div className="divide-y divide-border p-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="py-4 flex justify-between items-center gap-4">
-                <Skeleton className="h-5 w-6 rounded-full animate-pulse" />
-                <Skeleton className="h-4 w-12 animate-pulse" />
-                <Skeleton className="h-4 w-1/3 animate-pulse" />
-                <Skeleton className="h-6 w-10 rounded-lg animate-pulse" />
-                <Skeleton className="h-5 w-16 rounded-full animate-pulse" />
-                <Skeleton className="h-4 w-20 animate-pulse" />
-                <Skeleton className="h-8 w-20 rounded animate-pulse" />
-              </div>
-            ))}
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-96" />
           </div>
         </div>
       </div>
@@ -391,49 +328,56 @@ export function ProblemsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      
-      {/* 1. Page Header Block */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-border pb-4 gap-4 text-left">
-        <div>
-          <Typography variant="h1" className="font-semibold text-foreground">
-            Problems Directory
-          </Typography>
-          <Typography variant="muted">
-            Track spaced recall timelines and organize curation sheets.
-          </Typography>
-        </div>
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* 1. Page Header Banner Block */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card p-6 md:p-8 shadow-sm text-left">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 size-64 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs font-semibold">
+              <Code2 className="size-3.5" />
+              LeetCode Miscellaneous & Custom Practice
+            </div>
+            <Typography variant="h1" className="font-bold tracking-tight text-foreground">
+              Problems Explorer
+            </Typography>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Explore standalone LeetCode practice problems and custom coding challenges not associated with any structured DSA sheet.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-6 p-4 rounded-xl bg-card border border-border shadow-sm">
-          <div className="text-center">
-            <p className="text-xl font-light text-foreground">{problems.length}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total</p>
-          </div>
-          <div className="w-[1px] h-8 bg-border" />
-          <div className="text-center">
-            <p className="text-xl font-semibold text-emerald-600 dark:text-emerald-400">{solvedCount}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Solved</p>
-          </div>
-          <div className="w-[1px] h-8 bg-border" />
-          <div className="text-center">
-            <p className="text-xl font-semibold text-indigo-600 dark:text-indigo-400">{percentComplete}%</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Percent</p>
+          {/* Stats Bar Header Card */}
+          <div className="flex items-center gap-6 p-4 rounded-xl bg-card border border-border/80 shadow-xs shrink-0 backdrop-blur-xs">
+            <div className="text-center">
+              <p className="text-xl font-light text-foreground">{stats.total}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total</p>
+            </div>
+            <div className="w-[1px] h-8 bg-border/80" />
+            <div className="text-center">
+              <p className="text-xl font-semibold text-emerald-400">{stats.solved}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Solved</p>
+            </div>
+            <div className="w-[1px] h-8 bg-border/80" />
+            <div className="text-center">
+              <p className="text-xl font-semibold text-indigo-400">{stats.percentage}%</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Solved %</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 2. Search and Filters Sticky Toolbar */}
-      <div className="sticky top-14 z-20 bg-background/95 backdrop-blur-md py-4 border-b border-border flex flex-col gap-3">
+      {/* 2. Search and Filters Toolbar */}
+      <div className="sticky top-14 z-20 bg-background/95 backdrop-blur-md py-4 border-b border-border flex flex-col gap-3 text-left">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1">
             <SearchInput
-              placeholder="Search by problem name or topic... (e.g. LRU, Graph)"
+              placeholder="Search standalone problems by title or topic..."
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               className="w-full"
             />
           </div>
-          
+
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -446,7 +390,7 @@ export function ProblemsPage() {
         </div>
 
         {/* Filter selectors row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
           <Select
             options={[
               { value: "All", label: "Difficulty: All" },
@@ -476,6 +420,22 @@ export function ProblemsPage() {
 
           <Select
             options={[
+              { value: "All", label: "Company: All" },
+              { value: "Google", label: "Google" },
+              { value: "Microsoft", label: "Microsoft" },
+              { value: "Meta", label: "Meta" },
+              { value: "Amazon", label: "Amazon" },
+              { value: "Apple", label: "Apple" },
+              { value: "Netflix", label: "Netflix" },
+              { value: "Uber", label: "Uber" },
+              { value: "Adobe", label: "Adobe" },
+            ]}
+            value={filterCompany}
+            onChange={(e) => updateQueryParam("company", e.target.value)}
+          />
+
+          <Select
+            options={[
               { value: "id", label: "Sort: ID" },
               { value: "title", label: "Sort: Name" },
               { value: "difficulty", label: "Sort: Difficulty" },
@@ -486,27 +446,28 @@ export function ProblemsPage() {
 
           <Button
             onClick={handleRandomProblem}
-            className="text-xs bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm h-9"
+            className="text-xs bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs h-9 sm:col-span-2 sm:col-start-4 md:col-span-1"
           >
             🎲 Pick Random
           </Button>
         </div>
       </div>
 
-      {/* 3. Problems Table Block */}
-      <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden text-left">
+      {/* 3. Problems Table */}
+      <div className="border border-border bg-card rounded-xl shadow-xs overflow-hidden text-left">
         <div className="overflow-y-auto max-h-[calc(100vh-320px)] overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-border text-xs font-semibold text-muted-foreground select-none">
-                <th className="px-4 py-3 text-center w-16 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Status</th>
-                <th className="px-4 py-3 w-20 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">ID</th>
-                <th className="px-4 py-3 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Problem</th>
-                <th className="px-4 py-3 text-center w-24 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Practice</th>
-                <th className="px-4 py-3 w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Difficulty</th>
-                <th className="px-4 py-3 w-32 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Last Solved</th>
-                <th className="px-4 py-3 w-36 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Next Revision</th>
-                <th className="px-4 py-3 text-center w-28 sticky top-0 bg-muted/95 backdrop-blur-sm z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">Actions</th>
+                <th className="px-4 py-3 text-center w-16 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Status</th>
+                <th className="px-4 py-3 w-20 sticky top-0 bg-muted/95 backdrop-blur-xs z-10 font-mono text-center">ID</th>
+                <th className="px-4 py-3 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Problem Title</th>
+                <th className="px-4 py-3 w-32 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Topic</th>
+                <th className="px-4 py-3 w-44 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Companies</th>
+                <th className="px-4 py-3 text-center w-24 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Practice</th>
+                <th className="px-4 py-3 w-28 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Difficulty</th>
+                <th className="px-4 py-3 w-32 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Last Solved</th>
+                <th className="px-4 py-3 text-center w-28 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-sm">
@@ -516,58 +477,38 @@ export function ProblemsPage() {
                     <td className="px-4 py-4"><div className="h-4 w-4 bg-muted rounded-full mx-auto" /></td>
                     <td className="px-4 py-4"><div className="h-4 w-8 bg-muted rounded font-mono" /></td>
                     <td className="px-4 py-4"><div className="h-4 w-48 bg-muted rounded" /></td>
+                    <td className="px-4 py-4"><div className="h-4 w-16 bg-muted rounded" /></td>
+                    <td className="px-4 py-4"><div className="h-4 w-28 bg-muted rounded" /></td>
                     <td className="px-4 py-4 text-center"><div className="h-6 w-6 bg-muted rounded mx-auto" /></td>
-                    <td className="px-4 py-4"><div className="h-4.5 w-16 bg-muted rounded-full" /></td>
+                    <td className="px-4 py-4"><div className="h-4 w-16 bg-muted rounded-full" /></td>
                     <td className="px-4 py-4"><div className="h-4 w-20 bg-muted rounded" /></td>
-                    <td className="px-4 py-4"><div className="h-4 w-24 bg-muted rounded" /></td>
                     <td className="px-4 py-4"><div className="h-8 w-20 bg-muted rounded mx-auto" /></td>
                   </tr>
                 ))
-              ) : paginatedProblems.length === 0 ? (
+              ) : problems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="py-12 text-center text-muted-foreground">
                     <div className="max-w-md mx-auto space-y-2">
                       <XCircle className="size-8 text-muted-foreground/60 mx-auto" />
-                      <p className="font-semibold text-foreground">No matches found</p>
+                      <p className="font-semibold text-foreground">No standalone problems found</p>
                       <p className="text-xs">Adjust your keywords or reset filters to explore other questions.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                paginatedProblems.map((prob) => {
+                problems.map((prob) => {
                   const stat = getProblemStatus(prob.id);
-                  const isBook = isProblemBookmarked(prob.id);
-                  
-                  // Check if note exists
-                  const prog = progressList.find((p) => p.problemId === prob.id);
-                  const hasNote = prog && prog.note && prog.note.trim().length > 0;
-
-                  // Next review dates calculation
-                  let reviewDateStr = "-";
-                  if (prog) {
-                    if (prog.status === "Mastered") {
-                      reviewDateStr = "👑 Mastered";
-                    } else if (prog.srs && prog.srs.nextReviewDate) {
-                      if (prog.srs.status === "completed") {
-                        reviewDateStr = "Done";
-                      } else {
-                        const d = new Date(prog.srs.nextReviewDate);
-                        reviewDateStr = d.getTime() <= Date.now() ? "Due Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                      }
-                    }
-                  }
+                  const isBook = progressList.find((p) => p.problemId === prob.id)?.isBookmarked || false;
+                  const hasNote = !!progressList.find((p) => p.problemId === prob.id)?.note;
 
                   const difficultyColors: Record<string, string> = {
-                    Easy: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20",
-                    Medium: "text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/20",
-                    Hard: "text-rose-600 bg-rose-500/10 dark:text-rose-400 dark:bg-rose-500/20",
+                    Easy: "text-emerald-400 bg-emerald-500/15 border-emerald-500/30",
+                    Medium: "text-amber-400 bg-amber-500/15 border-amber-500/30",
+                    Hard: "text-rose-400 bg-rose-500/15 border-rose-500/30",
                   };
 
                   return (
-                    <tr
-                      key={prob.id}
-                      className="hover:bg-muted/10 transition-colors group"
-                    >
+                    <tr key={prob.id} className="hover:bg-muted/10 transition-colors group">
                       <td className="px-4 py-3.5 text-center">
                         <button
                           onClick={() => handleOpenStatusModal(prob.id, prob.title)}
@@ -577,29 +518,42 @@ export function ProblemsPage() {
                           {stat.icon}
                         </button>
                       </td>
-                      <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs">
+                      <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs text-center">
                         {prob.id}
                       </td>
                       <td className="px-4 py-3.5">
                         <Link
                           to={`/problems/${prob.id}`}
-                          className="font-semibold text-foreground hover:text-primary-hover hover:underline transition-colors"
+                          className="font-semibold text-foreground hover:text-primary transition-colors text-sm"
                         >
                           {prob.title}
                         </Link>
                       </td>
+                      <td className="px-4 py-3.5">
+                        <TopicBadge topic={prob.topic} />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex gap-1.5 flex-wrap items-center">
+                          {prob.companies && prob.companies.length > 0 ? (
+                            prob.companies.slice(0, 3).map((comp) => (
+                              <CompanyBadge key={comp} company={comp} />
+                            ))
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">General</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3.5 text-center">
                         <button
                           onClick={() => {
-                            const slug = prob.title.toLowerCase().replace(/ /g, "-");
                             setPomodoroPromptProblem({
                               id: prob.id,
                               title: prob.title,
                               difficulty: prob.difficulty,
-                              leetcodeUrl: `https://leetcode.com/problems/${slug}/`
+                              leetcodeUrl: prob.leetcodeUrl
                             });
                           }}
-                          className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all cursor-pointer inline-flex items-center justify-center shadow-sm"
+                          className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted hover:scale-105 transition-all cursor-pointer inline-flex items-center justify-center shadow-xs"
                           title="Solve on LeetCode"
                         >
                           <img
@@ -610,64 +564,38 @@ export function ProblemsPage() {
                         </button>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={cn("text-xs font-semibold rounded-full px-2 py-0.5 border", difficultyColors[prob.difficulty])}>
+                        <span className={cn("text-xs font-semibold rounded-full px-2.5 py-0.5 border shadow-xs", difficultyColors[prob.difficulty])}>
                           {prob.difficulty}
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-xs text-muted-foreground">
                         {getLastRevisedLabel(prob.id)}
                       </td>
-                      <td className="px-4 py-3.5 text-xs font-medium">
-                        <span className={cn(
-                          "font-medium",
-                          reviewDateStr === "👑 Mastered" ? "text-purple-600 dark:text-purple-400 font-bold" :
-                          reviewDateStr === "Due Today" ? "text-amber-500 font-semibold animate-pulse" : "text-muted-foreground"
-                        )}>
-                          {reviewDateStr}
-                        </span>
-                      </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-center gap-2">
-                          {/* Bookmark */}
                           <button
                             onClick={() => handleBookmarkToggle(prob.id)}
                             className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer"
                             title={isBook ? "Remove Bookmark" : "Add Bookmark"}
                           >
-                            <Bookmark className={cn("size-4", isBook ? "text-amber-500 fill-amber-500 border-amber-500" : "")} />
+                            <Bookmark className={cn("size-4", isBook ? "text-amber-500 fill-amber-500" : "")} />
                           </button>
 
-                          {/* Goal Target */}
                           <button
                             onClick={() => handleGoalToggle(prob.id)}
                             className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer"
                             title={goalIds.includes(prob.id) ? "Remove from Today's Goals" : "Add to Today's Goals"}
                           >
-                            <Target className={cn("size-4", goalIds.includes(prob.id) ? "text-rose-500 fill-rose-500/10" : "")} />
-                          </button>
-                          
-                          {/* Add Note */}
-                          <button
-                            onClick={() => handleOpenNoteModal(prob.id)}
-                            className={cn(
-                              "p-1.5 rounded cursor-pointer transition-colors",
-                              hasNote 
-                                ? "text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400 animate-pulse" 
-                                : "text-muted-foreground hover:bg-muted"
-                            )}
-                            title={hasNote ? "Edit Notes (Contains entry)" : "Add Notes"}
-                          >
-                            <FileText className="size-4" />
+                            <Target className={cn("size-4", goalIds.includes(prob.id) ? "text-emerald-500 fill-emerald-500/20" : "")} />
                           </button>
 
-                          {/* Redirect to Problem Details page */}
-                          <Link
-                            to={`/problems/${prob.id}`}
-                            className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer inline-flex items-center"
-                            title="Open Spaced Repetition Workspace"
+                          <button
+                            onClick={() => handleOpenNoteModal(prob.id)}
+                            className="p-1.5 rounded text-muted-foreground hover:bg-muted cursor-pointer"
+                            title={hasNote ? "Edit Notes" : "Add Notes"}
                           >
-                            <Eye className="size-4" />
-                          </Link>
+                            <FileText className={cn("size-4", hasNote ? "text-primary fill-primary/20" : "")} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -678,95 +606,117 @@ export function ProblemsPage() {
           </table>
         </div>
 
-        {/* 4. Pagination Controls Footer */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-3.5 border-t border-border bg-muted/10 text-xs text-muted-foreground">
-            <span>
-              Showing Page <span className="font-semibold text-foreground">{currentPage}</span> of <span className="font-semibold text-foreground">{totalPages}</span> ({totalItems} matching problems)
-            </span>
+        {/* Pagination Footer */}
+        {!loading && totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border bg-card">
+            <div className="text-xs text-muted-foreground">
+              Showing <span className="font-semibold text-foreground">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+              <span className="font-semibold text-foreground">{Math.min(currentPage * pageSize, totalItems)}</span> of{" "}
+              <span className="font-semibold text-foreground">{totalItems}</span> standalone problems
+            </div>
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={currentPage <= 1}
-                onClick={() => updateQueryParam("page", String(currentPage - 1))}
-                className="h-8 text-xs cursor-pointer"
+                onClick={() => updateQueryParam("page", (currentPage - 1).toString())}
+                className="text-xs gap-1.5 h-8"
               >
+                <ChevronLeft className="size-3.5" />
                 Previous
               </Button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                  if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) {
+                    return (
+                      <Button
+                        key={p}
+                        variant={p === currentPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => updateQueryParam("page", p.toString())}
+                        className={`size-8 text-xs p-0 font-medium ${
+                          p === currentPage
+                            ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {p}
+                      </Button>
+                    );
+                  } else if (
+                    (p === 2 && currentPage > 3) ||
+                    (p === totalPages - 1 && currentPage < totalPages - 2)
+                  ) {
+                    return (
+                      <span key={p} className="px-1 text-xs text-muted-foreground">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+
               <Button
                 variant="outline"
                 size="sm"
                 disabled={currentPage >= totalPages}
-                onClick={() => updateQueryParam("page", String(currentPage + 1))}
-                className="h-8 text-xs cursor-pointer"
+                onClick={() => updateQueryParam("page", (currentPage + 1).toString())}
+                className="text-xs gap-1.5 h-8"
               >
                 Next
+                <ChevronRight className="size-3.5" />
               </Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Note Editor Overlay Modal */}
-      <Dialog
-        isOpen={activeNoteProblemId !== null}
-        onClose={() => setActiveNoteProblemId(null)}
-        title="Add/Edit Problem Notes"
-        description="Write code notes, patterns, or constraints to review later."
-      >
-        <div className="space-y-4 text-left">
-          <Textarea
-            placeholder="Type patterns summaries (e.g. 'Uses left_max and right_max arrays, time complexity is O(N)...')"
-            value={activeNoteText}
-            onChange={(e) => setActiveNoteText(e.target.value)}
-            className="text-xs h-32 leading-relaxed"
-            disabled={savingNote}
-          />
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActiveNoteProblemId(null)}
-              disabled={savingNote}
-              className="text-xs cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveNotes}
-              size="sm"
-              disabled={savingNote}
-              className="text-xs cursor-pointer shadow-sm"
-            >
-              {savingNote ? "Saving..." : "Save Note"}
-            </Button>
+      {/* Modals */}
+      {statusModalProblem && (
+        <StatusChangeModal
+          isOpen={!!statusModalProblem}
+          onClose={() => setStatusModalProblem(null)}
+          problemId={statusModalProblem.id}
+          problemTitle={statusModalProblem.title}
+          currentStatus={progressList.find((p) => p.problemId === statusModalProblem.id)?.status || "Not Started"}
+          onSuccess={() => {
+            loadExplorerData();
+          }}
+        />
+      )}
+
+      {pomodoroPromptProblem && (
+        <PomodoroPromptModal
+          isOpen={!!pomodoroPromptProblem}
+          onClose={() => setPomodoroPromptProblem(null)}
+          problem={pomodoroPromptProblem}
+        />
+      )}
+
+      {activeNoteProblemId && (
+        <Dialog isOpen={!!activeNoteProblemId} onClose={() => setActiveNoteProblemId(null)} title="Personal Notes">
+          <div className="space-y-4 pt-2 text-left">
+            <Textarea
+              value={activeNoteText}
+              onChange={(e) => setActiveNoteText(e.target.value)}
+              placeholder="Write your approach notes, key learnings, or edge cases..."
+              rows={6}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setActiveNoteProblemId(null)} size="sm">
+                Cancel
+              </Button>
+
+              <Button onClick={handleSaveNotes} disabled={savingNote} size="sm">
+                {savingNote ? "Saving..." : "Save Notes"}
+              </Button>
+            </div>
           </div>
-        </div>
-      </Dialog>
-
-      {/* Centralized Status Log Modal */}
-      <StatusChangeModal
-        isOpen={statusModalProblem !== null}
-        onClose={() => setStatusModalProblem(null)}
-        problemId={statusModalProblem?.id || null}
-        problemTitle={statusModalProblem?.title || null}
-        onStatusUpdated={() => {
-          loadExplorerData(); // reload layout records
-        }}
-      />
-
-      {/* Pomodoro Prompt Modal */}
-      <PomodoroPromptModal
-        isOpen={pomodoroPromptProblem !== null}
-        onClose={() => setPomodoroPromptProblem(null)}
-        problemId={pomodoroPromptProblem?.id || null}
-        problemTitle={pomodoroPromptProblem?.title || null}
-        difficulty={pomodoroPromptProblem?.difficulty || ""}
-        leetcodeUrl={pomodoroPromptProblem?.leetcodeUrl || ""}
-      />
-
+        </Dialog>
+      )}
     </div>
   );
 }

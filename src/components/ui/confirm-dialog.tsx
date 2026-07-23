@@ -1,3 +1,4 @@
+import {type ReactNode } from "react";
 import { Dialog } from "./dialog";
 import { Button } from "./button";
 
@@ -6,11 +7,12 @@ export interface ConfirmDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  description: string;
+  description?: string;
   confirmText?: string;
   cancelText?: string;
   variant?: "primary" | "danger" | "warning";
   isLoading?: boolean;
+  children?: ReactNode;
 }
 
 export function ConfirmDialog({
@@ -23,6 +25,7 @@ export function ConfirmDialog({
   cancelText = "Cancel",
   variant = "primary",
   isLoading = false,
+  children,
 }: ConfirmDialogProps) {
   const buttonVariantMap = {
     primary: "default" as const,
@@ -32,6 +35,7 @@ export function ConfirmDialog({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={title} description={description}>
+      {children}
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-6">
         <Button
           variant="outline"

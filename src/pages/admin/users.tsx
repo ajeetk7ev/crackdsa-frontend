@@ -26,8 +26,18 @@ interface UserItem {
   email: string;
   role: "admin" | "student" | string;
   status?: "active" | "blocked" | string;
+  avatar?: string;
   createdAt?: string;
 }
+
+const getInitials = (name: string) => {
+  if (!name) return "U";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+};
 
 export function AdminUsersPage() {
   const addToast = useNotificationStore((state: any) => state.addToast);
@@ -315,8 +325,24 @@ export function AdminUsersPage() {
                         )}
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className="font-semibold text-foreground block">{item.name}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono block mt-0.5">ID: {item.id}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="size-9 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground uppercase overflow-hidden shrink-0 shadow-sm">
+                            {item.avatar ? (
+                              <img
+                                src={item.avatar}
+                                alt={item.name}
+                                className="size-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              getInitials(item.name)
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-semibold text-foreground block truncate">{item.name}</span>
+                            <span className="text-[10px] text-muted-foreground font-mono block truncate mt-0.5">ID: {item.id}</span>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3.5 text-muted-foreground">
                         {item.email}

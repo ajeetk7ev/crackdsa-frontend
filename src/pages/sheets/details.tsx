@@ -11,6 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusChangeModal } from "@/components/common/StatusChangeModal";
 import { PomodoroPromptModal } from "@/components/common/PomodoroPromptModal";
+import { CompanyBadge, TopicBadge } from "@/components/common/BadgeUtils";
 import leetcodeLogo from "@/assets/LeetCode_logo_black.png";
 import {
   Bookmark,
@@ -529,19 +530,19 @@ export function SheetDetailsPage() {
                           </Link>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                        {prob.topic}
+                      <td className="px-4 py-3.5">
+                        <TopicBadge topic={prob.topic} />
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="flex gap-1 flex-wrap">
+                        <div className="flex gap-1.5 flex-wrap items-center">
                           {prob.companies.slice(0, 3).map((comp) => (
-                            <span 
-                              key={comp}
-                              className="px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground text-[10px] font-medium"
-                            >
-                              {comp}
-                            </span>
+                            <CompanyBadge key={comp} company={comp} />
                           ))}
+                          {prob.companies.length > 3 && (
+                            <span className="text-[10px] text-muted-foreground font-semibold px-1">
+                              +{prob.companies.length - 3}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3.5 text-center">

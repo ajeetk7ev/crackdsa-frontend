@@ -108,7 +108,7 @@ export function ContestCard({ contest, onLogParticipation }: ContestCardProps) {
             {contest.platform === "codeforces" ? (
               <img src={codeforcesLogo} alt="Codeforces" className="size-3.5 object-contain" />
             ) : (
-              <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain dark:invert" />
+              <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain" />
             )}
             {contest.platform}
           </span>

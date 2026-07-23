@@ -273,7 +273,7 @@ export function ContestsPage() {
                 }`}
               >
                 {pf === "leetcode" && (
-                  <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain dark:invert" />
+                  <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain" />
                 )}
                 {pf === "codeforces" && (
                   <img src={codeforcesLogo} alt="Codeforces" className="size-3.5 object-contain" />
@@ -371,7 +371,7 @@ export function ContestsPage() {
                                 } ${platformColors[contest?.platform] || "text-muted-foreground"}`}
                               >
                                 {contest?.platform === "leetcode" && (
-                                  <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain dark:invert" />
+                                  <img src={leetcodeLogo} alt="LeetCode" className="size-3.5 object-contain" />
                                 )}
                                 {contest?.platform === "codeforces" && (
                                   <img src={codeforcesLogo} alt="Codeforces" className="size-3.5 object-contain" />

@@ -135,7 +135,7 @@ export function ParticipationModal({
           {contest.platform === "codeforces" ? (
             <img src={codeforcesLogo} alt="Codeforces" className="size-5 object-contain shrink-0" />
           ) : contest.platform === "leetcode" ? (
-            <img src={leetcodeLogo} alt="LeetCode" className="size-5 object-contain dark:invert shrink-0" />
+            <img src={leetcodeLogo} alt="LeetCode" className="size-5 object-contain shrink-0" />
           ) : (
             <Trophy className="size-5 text-primary shrink-0" />
           )}
