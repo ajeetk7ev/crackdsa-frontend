@@ -74,8 +74,8 @@ export function ProblemDetailsPage() {
       } else {
         setCustomReviewDate("");
       }
-    } catch {
-      addToast("Failed to fetch problem workspace records.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch problem workspace records.", "error");
       navigate("/problems");
     } finally {
       setLoading(false);
@@ -93,8 +93,8 @@ export function ProblemDetailsPage() {
       await api.post(`/notes/${id}`, { note: notesText });
       addToast("Notes updated successfully.", "success");
       loadProblemDetails();
-    } catch {
-      addToast("Failed to save note details.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to save note details.", "error");
     } finally {
       setSyncing(false);
     }
@@ -106,8 +106,8 @@ export function ProblemDetailsPage() {
       await api.put(`/progress/${id}`, { isBookmarked: !isBookmarked });
       addToast(isBookmarked ? "Bookmark removed." : "Problem bookmarked.", isBookmarked ? "info" : "success");
       setIsBookmarked(!isBookmarked);
-    } catch {
-      addToast("Failed to toggle bookmark.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to toggle bookmark.", "error");
     }
   };
 
@@ -118,8 +118,8 @@ export function ProblemDetailsPage() {
       setIsEditingTime(false);
       addToast("Solve time updated.", "success");
       loadProblemDetails();
-    } catch {
-      addToast("Failed to update solve time.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to update solve time.", "error");
     }
   };
 

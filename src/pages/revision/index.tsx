@@ -89,8 +89,8 @@ export function RevisionPage() {
       setProblems(probRes.data.data.problems);
       setStats(statsRes.data.data);
       setProgressList(progRes.data.data);
-    } catch {
-      addToast("Failed to fetch initial page metrics.", "error");
+    } catch (err:any) {
+      addToast(err?.response?.data?.message || "Failed to fetch initial page metrics.", "error");
     }
   };
 
@@ -111,8 +111,8 @@ export function RevisionPage() {
         setTotalPages(res.data.data.pagination.totalPages);
         setTotalItems(res.data.data.pagination.total);
       }
-    } catch {
-      addToast("Failed to fetch filtered revisions from server.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to fetch filtered revisions from server.", "error");
     } finally {
       setLoading(false);
     }
@@ -261,8 +261,8 @@ export function RevisionPage() {
       addToast(isBookmarked ? "Bookmark removed." : "Problem bookmarked.", "success");
       loadRevisionData();
       fetchTableRevisions();
-    } catch {
-      addToast("Failed to toggle bookmark.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to toggle bookmark.", "error");
     }
   };
 
@@ -288,8 +288,8 @@ export function RevisionPage() {
       setActiveNoteProblemId(null);
       loadRevisionData();
       fetchTableRevisions();
-    } catch {
-      addToast("Failed to save note.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to save note.", "error");
     } finally {
       setSavingNote(false);
     }

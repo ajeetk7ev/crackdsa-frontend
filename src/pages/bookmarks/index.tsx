@@ -50,8 +50,9 @@ export function BookmarksPage() {
       setLoading(true);
       const progRes = await api.get("/progress");
       setProgressList(progRes.data.data);
-    } catch {
-      addToast("Failed to fetch bookmarks workspace progress records.", "error");
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || "Failed to fetch bookmarks workspace progress records.";
+      addToast(errMsg, "error");
     } finally {
       setLoading(false);
     }
@@ -66,8 +67,8 @@ export function BookmarksPage() {
       await api.put(`/progress/${probId}`, { isBookmarked: false });
       addToast("Removed from bookmarks.", "info");
       loadData();
-    } catch {
-      addToast("Failed to toggle bookmark.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to toggle bookmark.", "error");
     }
   };
 
@@ -163,8 +164,8 @@ export function BookmarksPage() {
       addToast("Notes saved successfully.", "success");
       setActiveNoteProblemId(null);
       loadData();
-    } catch {
-      addToast("Failed to save note.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to save note.", "error");
     } finally {
       setSavingNote(false);
     }

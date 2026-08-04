@@ -60,8 +60,8 @@ export function DashboardPage() {
       setProblems(probRes.data.data.problems);
       setRevisions(revRes.data.data);
       setProgressList(progRes.data.data);
-    } catch (err) {
-      addToast("Failed to fetch dashboard updates from database.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch dashboard updates from database.", "error");
     } finally {
       setLoading(false);
     }
@@ -113,8 +113,8 @@ export function DashboardPage() {
       addToast("SM2 Interval database logs updated successfully!", "success");
       handleCloseReview();
       loadDashboardData();
-    } catch (err) {
-      addToast("Failed to process revision updates.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to process revision updates.", "error");
     } finally {
       setIsReviewing(false);
     }

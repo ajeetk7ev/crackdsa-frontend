@@ -159,8 +159,8 @@ export function ProblemsPage() {
       if (goalRes) {
         setGoalIds(goalRes.data.data.problemIds);
       }
-    } catch {
-      addToast("Failed to fetch standalone problems directory records.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch standalone problems directory records.", "error");
     } finally {
       setLoading(false);
       setIsFirstLoad(false);
@@ -188,8 +188,8 @@ export function ProblemsPage() {
       const res = await api.post("/goals/today", { problems: newGoals });
       setGoalIds(res.data.data.problemIds);
       addToast(isGoal ? "Removed from today's goals." : "Added to today's goals.", "success");
-    } catch {
-      addToast("Failed to update today's goals.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to update today's goals.", "error");
     }
   };
 
@@ -208,8 +208,8 @@ export function ProblemsPage() {
         currentlyBookmarked ? "info" : "success"
       );
       loadExplorerData();
-    } catch {
-      addToast("Failed to toggle bookmark.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to toggle bookmark.", "error");
     }
   };
 
@@ -287,6 +287,64 @@ export function ProblemsPage() {
     });
   };
 
+  const getNextRevisionLabel = (probId: string) => {
+    const prog = progressList.find((p) => p.problemId === probId);
+    if (!prog || !prog.status || prog.status === "Not Started") {
+      return {
+        text: "Not Scheduled",
+        color: "text-muted-foreground bg-muted/20 border-border/40 font-normal"
+      };
+    }
+
+    if (prog.status === "Mastered") {
+      return {
+        text: "Mastered 👑",
+        color: "text-purple-400 bg-purple-500/15 border-purple-500/30 font-semibold"
+      };
+    }
+
+    const rawDate = prog.nextReviewDate || prog.srs?.nextReviewDate;
+    if (rawDate) {
+      const nextDate = new Date(rawDate);
+      if (!isNaN(nextDate.getTime())) {
+        const formattedDate = nextDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        });
+
+        const now = new Date();
+        const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const revMid = new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+        
+        const diffTime = revMid.getTime() - todayMid.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays <= 0) {
+          return {
+            text: `Due Today ⚡ (${formattedDate})`,
+            color: "text-rose-400 bg-rose-500/15 border-rose-500/40 font-bold animate-pulse"
+          };
+        } else if (diffDays === 1) {
+          return {
+            text: `Tomorrow (${formattedDate})`,
+            color: "text-amber-400 bg-amber-500/15 border-amber-500/30 font-semibold"
+          };
+        } else {
+          return {
+            text: formattedDate,
+            color: "text-indigo-400 bg-indigo-500/15 border-indigo-500/30 font-semibold"
+          };
+        }
+      }
+    }
+
+    return {
+      text: "Not Scheduled",
+      color: "text-muted-foreground bg-muted/20 border-border/40 font-normal"
+    };
+  };
+
   const handleOpenStatusModal = (id: string, title: string) => {
     setStatusModalProblem({ id, title });
   };
@@ -305,8 +363,8 @@ export function ProblemsPage() {
       addToast("Problem notes saved.", "success");
       setActiveNoteProblemId(null);
       loadExplorerData();
-    } catch {
-      addToast("Failed to save note.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to save note.", "error");
     } finally {
       setSavingNote(false);
     }
@@ -465,10 +523,11 @@ export function ProblemsPage() {
                 <th className="px-4 py-3 text-center w-24 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Practice</th>
                 <th className="px-4 py-3 w-28 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Difficulty</th>
                 <th className="px-4 py-3 w-32 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Last Solved</th>
+                <th className="px-4 py-3 w-32 text-center sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Next Revision</th>
                 <th className="px-4 py-3 text-center w-28 sticky top-0 bg-muted/95 backdrop-blur-xs z-10">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border text-sm">
+            <tbody className="divide-y divide-border/60 text-sm">
               {loading ? (
                 Array.from({ length: pageSize }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
@@ -480,12 +539,13 @@ export function ProblemsPage() {
                     <td className="px-4 py-4 text-center"><div className="h-6 w-6 bg-muted rounded mx-auto" /></td>
                     <td className="px-4 py-4"><div className="h-4 w-16 bg-muted rounded-full" /></td>
                     <td className="px-4 py-4"><div className="h-4 w-20 bg-muted rounded" /></td>
+                    <td className="px-4 py-4"><div className="h-4 w-20 bg-muted rounded mx-auto" /></td>
                     <td className="px-4 py-4"><div className="h-8 w-20 bg-muted rounded mx-auto" /></td>
                   </tr>
                 ))
               ) : problems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={10} className="py-12 text-center text-muted-foreground">
                     <div className="max-w-md mx-auto space-y-2">
                       <XCircle className="size-8 text-muted-foreground/60 mx-auto" />
                       <p className="font-semibold text-foreground">No standalone problems found</p>
@@ -496,6 +556,7 @@ export function ProblemsPage() {
               ) : (
                 problems.map((prob) => {
                   const stat = getProblemStatus(prob.id);
+                  const nextRev = getNextRevisionLabel(prob.id);
                   const isBook = progressList.find((p) => p.problemId === prob.id)?.isBookmarked || false;
                   const hasNote = !!progressList.find((p) => p.problemId === prob.id)?.note;
 
@@ -506,7 +567,7 @@ export function ProblemsPage() {
                   };
 
                   return (
-                    <tr key={prob.id} className="hover:bg-muted/10 transition-colors group">
+                    <tr key={prob.id} className="hover:bg-gradient-to-r hover:from-primary/5 hover:via-muted/15 hover:to-transparent transition-all group">
                       <td className="px-4 py-3.5 text-center">
                         <button
                           onClick={() => handleOpenStatusModal(prob.id, prob.title)}
@@ -533,11 +594,16 @@ export function ProblemsPage() {
                       <td className="px-4 py-3.5">
                         <div className="flex gap-1.5 flex-wrap items-center">
                           {prob.companies && prob.companies.length > 0 ? (
-                            prob.companies.slice(0, 3).map((comp) => (
+                            prob.companies.slice(0, 2).map((comp) => (
                               <CompanyBadge key={comp} company={comp} />
                             ))
                           ) : (
                             <span className="text-[11px] text-muted-foreground">General</span>
+                          )}
+                          {prob.companies && prob.companies.length > 2 && (
+                            <span className="text-[10px] text-muted-foreground font-semibold px-1 rounded bg-muted/30">
+                              +{prob.companies.length - 2}
+                            </span>
                           )}
                         </div>
                       </td>
@@ -566,8 +632,13 @@ export function ProblemsPage() {
                           {prob.difficulty}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium">
                         {getLastRevisedLabel(prob.id)}
+                      </td>
+                      <td className="px-4 py-3.5 text-center text-xs">
+                        <span className={cn("inline-flex items-center justify-center px-2.5 py-0.5 rounded-full border text-[11px] transition-all", nextRev.color)}>
+                          {nextRev.text}
+                        </span>
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-center gap-2">

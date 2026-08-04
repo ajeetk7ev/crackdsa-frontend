@@ -86,8 +86,8 @@ export function ContestsPage() {
       if (platformFilter !== "all") params.platform = platformFilter;
       const res = await api.get("/contests/upcoming", { params });
       setUpcomingContests(res.data.data);
-    } catch {
-      addToast("Failed to fetch upcoming contests.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch upcoming contests.", "error");
     }
   }, [platformFilter]);
 
@@ -95,8 +95,8 @@ export function ContestsPage() {
     try {
       const res = await api.get("/contests/my-stats");
       setStats(res.data.data);
-    } catch {
-      // Stats are optional, don't block
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch contest stats.", "error");
     }
   }, []);
 
@@ -107,8 +107,8 @@ export function ContestsPage() {
       });
       setHistoryData(res.data.data.participations);
       setHistoryTotalPages(res.data.data.pagination.totalPages);
-    } catch {
-      addToast("Failed to fetch contest history.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch contest history.", "error");
     }
   }, []);
 
@@ -132,8 +132,8 @@ export function ContestsPage() {
       await api.post("/contests/sync");
       await fetchUpcoming();
       addToast("Contests synced from external APIs!", "success");
-    } catch {
-      addToast("Failed to sync contests.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to sync contests.", "error");
     } finally {
       setSyncing(false);
     }
@@ -144,7 +144,7 @@ export function ContestsPage() {
     try {
       const res = await api.get(`/contests/${contest.id}/participation`);
       setExistingParticipation(res.data.data);
-    } catch {
+    } catch (err: any) {
       setExistingParticipation(null);
     }
     setParticipationModalOpen(true);
@@ -160,8 +160,8 @@ export function ContestsPage() {
       setExistingParticipation(null);
       // Refresh stats and history
       await Promise.all([fetchStats(), fetchHistory(historyPage)]);
-    } catch {
-      addToast("Failed to save participation.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to save participation.", "error");
     }
   };
 

@@ -502,8 +502,8 @@ export function TodayGoalCard({
       await api.delete("/goals/today");
       setGoalIds([]);
       addToast("Today's goals cleared.", "info");
-    } catch {
-      addToast("Failed to clear today's goals.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to clear today's goals.", "error");
     }
   };
 
@@ -525,8 +525,8 @@ export function TodayGoalCard({
       if (onGoalStatusChange) {
         onGoalStatusChange();
       }
-    } catch (err) {
-      addToast("Failed to update goal status.", "error");
+    } catch (err:any) {
+      addToast(err?.response?.data?.message || "Failed to update goal status.", "error");
     }
   };
 

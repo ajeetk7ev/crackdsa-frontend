@@ -113,8 +113,8 @@ export function CollectionsPage() {
 
       setCollections(colRes.data.data);
       setProgressList(progRes.data.data);
-    } catch {
-      addToast("Failed to fetch collections records.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch collections records.", "error");
     } finally {
       setLoading(false);
     }
@@ -142,8 +142,8 @@ export function CollectionsPage() {
       setTotalPlaylistItems(res.data.data.pagination.total);
       setTotalPlaylistPages(res.data.data.pagination.totalPages);
       setPlaylistDifficulties(res.data.data.difficulties || { Easy: 0, Medium: 0, Hard: 0 });
-    } catch {
-      addToast("Failed to fetch playlist problems.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch playlist problems.", "error");
     } finally {
       setLoadingPlaylistProblems(false);
     }
@@ -185,8 +185,8 @@ export function CollectionsPage() {
       });
       setModalHasMore(page < (pagination?.totalPages || 1));
       setModalPage(page);
-    } catch {
-      addToast("Failed to fetch problems list.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to fetch problems list.", "error");
     } finally {
       setModalLoading(false);
     }
@@ -247,8 +247,8 @@ export function CollectionsPage() {
       setNewColPublic(false);
       setIsCreateOpen(false);
       loadCollectionsData();
-    } catch {
-      addToast("Failed to create collection.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to create collection.", "error");
     } finally {
       setSavingCollection(false);
     }
@@ -264,8 +264,8 @@ export function CollectionsPage() {
       addToast("Collection renamed successfully.", "success");
       setIsRenameOpen(false);
       loadCollectionsData();
-    } catch {
-      addToast("Failed to rename collection.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to rename collection.", "error");
     } finally {
       setSavingCollection(false);
     }
@@ -280,8 +280,8 @@ export function CollectionsPage() {
       addToast("Collection deleted.", "info");
       setActiveCollectionId(null);
       loadCollectionsData();
-    } catch {
-      addToast("Failed to delete collection.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to delete collection.", "error");
     }
   };
 
@@ -318,8 +318,8 @@ export function CollectionsPage() {
       setIsAddProblemsOpen(false);
       loadCollectionsData();
       fetchCollectionDetails(activeCollectionId, playlistPage);
-    } catch {
-      addToast("Failed to update playlist questions.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to update playlist questions.", "error");
     } finally {
       setSavingCollectionProblems(false);
     }
@@ -335,8 +335,8 @@ export function CollectionsPage() {
       addToast("Problem removed from this playlist.", "info");
       loadCollectionsData();
       fetchCollectionDetails(activeCollectionId, playlistPage);
-    } catch {
-      addToast("Failed to remove problem.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to remove problem.", "error");
     }
   };
 
@@ -358,8 +358,8 @@ export function CollectionsPage() {
       await api.put(`/progress/${probId}`, { isBookmarked: !currentlyBookmarked });
       addToast(currentlyBookmarked ? "Bookmark removed." : "Bookmark added.", currentlyBookmarked ? "info" : "success");
       loadCollectionsData();
-    } catch {
-      addToast("Failed to toggle bookmark.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to toggle bookmark.", "error");
     }
   };
 
@@ -450,8 +450,8 @@ export function CollectionsPage() {
       addToast("Recall note saved successfully.", "success");
       setActiveNoteProblemId(null);
       loadCollectionsData();
-    } catch {
-      addToast("Failed to save note.", "error");
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || "Failed to save note.", "error");
     } finally {
       setSavingNote(false);
     }

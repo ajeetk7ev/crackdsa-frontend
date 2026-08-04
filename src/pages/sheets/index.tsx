@@ -119,8 +119,8 @@ export function SheetsPage() {
           totalPages: 1
         });
       }
-    } catch {
-      addToast("Failed to fetch DSA sheets metadata.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to fetch DSA sheets metadata.", "error");
     } finally {
       setLoading(false);
     }

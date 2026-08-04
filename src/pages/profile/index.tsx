@@ -138,8 +138,8 @@ export function ProfilePage() {
       setLeetcodeUsername(lcUser);
 
       setEditLeetcodeUser(lcUser);
-    } catch {
-      addToast("Failed to fetch profile details.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to fetch profile details.", "error");
     } finally {
       setLoading(false);
     }
@@ -161,8 +161,8 @@ export function ProfilePage() {
       setLeetcodeUsername(cleanUser);
       addToast(cleanUser ? `LeetCode profile connected: ${cleanUser}` : "LeetCode profile disconnected", "success");
       setIsLeetcodeOpen(false);
-    } catch {
-      addToast("Failed to save Leetcode username.", "error");
+    } catch(err:any) {
+      addToast(err?.response?.data?.message || "Failed to save Leetcode username.", "error");
     }
   };
 
@@ -175,8 +175,8 @@ export function ProfilePage() {
       setLeetcodeUsername("");
       setEditLeetcodeUser("");
       addToast("LeetCode profile disconnected.", "info");
-    } catch {
-      addToast("Failed to disconnect LeetCode username.", "error");
+    } catch (err:any) {
+      addToast(err?.response?.data?.message || "Failed to disconnect LeetCode username.", "error");
     }
   };
 

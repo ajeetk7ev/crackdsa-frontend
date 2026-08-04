@@ -48,7 +48,7 @@ export function LandingPage() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   // Showcase Component Tab State
-  const [showcaseTab, setShowcaseTab] = useState<"srs" | "analytics" | "collections" | "productivity">("srs");
+  const [showcaseTab, setShowcaseTab] = useState<"dashboard" | "sheets" | "revision" | "problem">("dashboard");
 
   // Mock Dashboard State for Hero Interaction
   const [streak, setStreak] = useState(14);
@@ -800,304 +800,324 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* 6. PRODUCT SHOWCASE (INTERACTIVE HIGHLIGHT TABS) */}
-      <section className="w-full bg-background-secondary py-20 md:py-28 border-y border-border/80">
+      {/* 6. PLATFORM PAGES SHOWCASE (INTERACTIVE HIGHLIGHT TABS) */}
+      <section id="platform-showcase" className="w-full bg-background-secondary py-20 md:py-28 border-y border-border/80">
         <div className="max-w-6xl mx-auto px-6 space-y-12">
           
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest block font-sans">Interactive Walkthrough</span>
-            <h2 className="text-3xl font-extrabold text-foreground">Explore the CrackDSA Interface</h2>
-            <p className="text-sm text-muted-foreground font-normal">Select a feature below to preview dashboard integrations and core mechanics.</p>
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest block font-sans">Platform Workspace Experience</span>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight">
+              Explore the CrackDSA Suite
+            </h2>
+            <p className="text-sm text-muted-foreground font-normal">
+              Click through our live interface tabs to inspect the Command Dashboard, Pattern-Wise DSA Sheets, SM-2 Spaced Revision Board, and Problem Workspace.
+            </p>
           </div>
 
           <div className="grid lg:grid-cols-12 gap-8 items-stretch pt-4">
             
             {/* Tab Selectors (Left side) */}
-            <div className="lg:col-span-4 flex flex-col gap-2 justify-center">
+            <div className="lg:col-span-4 flex flex-col gap-3 justify-center">
               
               <button 
-                onClick={() => setShowcaseTab("srs")}
+                onClick={() => setShowcaseTab("dashboard")}
                 className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                  showcaseTab === "srs" 
-                    ? "border-primary bg-card shadow-sm" 
+                  showcaseTab === "dashboard" 
+                    ? "border-primary bg-card shadow-lg ring-1 ring-primary/30" 
                     : "border-border/60 hover:border-border hover:bg-muted/30"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <BrainCircuit className="size-4 text-indigo-500" />
-                  <span className="text-xs font-bold text-foreground">Adaptive SRS Engine</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="size-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">
+                    <Activity className="size-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Command Dashboard</span>
+                    <span className="text-[10px] text-muted-foreground">Action plans, streaks & Pomodoro</span>
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Watch how the SM2 algorithm increases gap intervals for mastered questions to reduce study loads.
-                </p>
               </button>
 
               <button 
-                onClick={() => setShowcaseTab("analytics")}
+                onClick={() => setShowcaseTab("sheets")}
                 className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                  showcaseTab === "analytics" 
-                    ? "border-primary bg-card shadow-sm" 
+                  showcaseTab === "sheets" 
+                    ? "border-primary bg-card shadow-lg ring-1 ring-primary/30" 
                     : "border-border/60 hover:border-border hover:bg-muted/30"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <Activity className="size-4 text-emerald-500" />
-                  <span className="text-xs font-bold text-foreground">Readiness Analytics</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="size-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
+                    <BookOpen className="size-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Pattern-Wise DSA Sheets</span>
+                    <span className="text-[10px] text-muted-foreground">Hierarchical Subtopics & Progress Accordions</span>
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Identify prepare metrics and weaknesses across critical coding patterns before schedule runs.
-                </p>
               </button>
 
               <button 
-                onClick={() => setShowcaseTab("collections")}
+                onClick={() => setShowcaseTab("revision")}
                 className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                  showcaseTab === "collections" 
-                    ? "border-primary bg-card shadow-sm" 
+                  showcaseTab === "revision" 
+                    ? "border-primary bg-card shadow-lg ring-1 ring-primary/30" 
                     : "border-border/60 hover:border-border hover:bg-muted/30"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <BookOpen className="size-4 text-amber-500" />
-                  <span className="text-xs font-bold text-foreground">Collections & Notes</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="size-7 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+                    <BrainCircuit className="size-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">SM-2 Revision Queue</span>
+                    <span className="text-[10px] text-muted-foreground">Automated spaced recall & forecast</span>
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Organize custom workspace folders and save solutions in the built-in editor.
-                </p>
               </button>
 
               <button 
-                onClick={() => setShowcaseTab("productivity")}
+                onClick={() => setShowcaseTab("problem")}
                 className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                  showcaseTab === "productivity" 
-                    ? "border-primary bg-card shadow-sm" 
+                  showcaseTab === "problem" 
+                    ? "border-primary bg-card shadow-lg ring-1 ring-primary/30" 
                     : "border-border/60 hover:border-border hover:bg-muted/30"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <Clock className="size-4 text-purple-500" />
-                  <span className="text-xs font-bold text-foreground">Pomodoro Timer</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="size-7 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center font-bold">
+                    <Code2 className="size-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Problem Workspace & Notes</span>
+                    <span className="text-[10px] text-muted-foreground">Markdown logs, solve timer & LeetCode link</span>
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Maintain consistency under study pressure using integrated focus timers.
-                </p>
               </button>
 
             </div>
 
             {/* Mockup Preview Panel (Right side) */}
-            <div className="lg:col-span-8 border border-border bg-card rounded-2xl p-6 shadow-md flex flex-col justify-center min-h-[350px] transition-all">
+            <div className="lg:col-span-8 border border-border/80 bg-card/90 backdrop-blur-md rounded-2xl p-6 shadow-2xl flex flex-col justify-center min-h-[420px] transition-all relative overflow-hidden">
               
-              {showcaseTab === "srs" && (
-                <div className="space-y-6 text-left animate-in fade-in duration-200">
-                  <div className="flex justify-between items-center pb-3 border-b border-border/60">
-                    <div>
-                      <h4 className="text-xs font-bold text-foreground">Adaptive Memory Recall Gaps</h4>
-                      <p className="text-[10px] text-muted-foreground">Ebbinghaus forgetting curve optimization</p>
-                    </div>
-                    <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded font-medium">SM2 Algorithm</span>
-                  </div>
-
-                  {/* SVG Line Graph representation of Retention curves */}
-                  <div className="space-y-4">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Without Spaced Repetition, your memory of a coding pattern drops to 20% in 5 days. With CrackDSA, scheduled reviews flatten the curve, locking in patterns over weeks.
-                    </p>
-                    
-                    {/* Visual Curve Representation */}
-                    <div className="relative h-32 border-l border-b border-border/80 mx-2 pt-2">
-                      {/* Forgetting Curve line */}
-                      <svg className="w-full h-full absolute inset-0 overflow-visible" fill="none">
-                        {/* Static Forgot Curve (Red) */}
-                        <path 
-                          d="M 0 10 Q 50 80 150 110" 
-                          stroke="rgba(239, 68, 68, 0.4)" 
-                          strokeWidth="2" 
-                          strokeDasharray="4 2"
-                        />
-                        <text x="60" y="85" fill="rgba(239, 68, 68, 0.6)" className="text-[8px] font-medium">Forgot curve (Excel/None)</text>
-                        
-                        {/* Spaced Recall Curve (Green) */}
-                        <path 
-                          d="M 0 10 Q 15 25 30 10 Q 60 25 90 10 Q 140 25 190 10 Q 260 25 350 10" 
-                          stroke="var(--color-success)" 
-                          strokeWidth="2.5"
-                        />
-                        <text x="240" y="25" fill="var(--color-success)" className="text-[8px] font-semibold">SRS Mastery retention curve</text>
-                      </svg>
-                      
-                      {/* X and Y labels */}
-                      <span className="absolute bottom-1 right-2 text-[8px] text-muted-foreground">Days of Study</span>
-                      <span className="absolute top-1 left-2 text-[8px] text-muted-foreground">Memory %</span>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2 text-center pt-2">
-                      <div className="p-2 border border-border/60 rounded bg-background-secondary text-left">
-                        <span className="text-[9px] text-muted-foreground block">Review 1</span>
-                        <span className="text-xs font-semibold text-foreground">Day 1</span>
-                      </div>
-                      <div className="p-2 border border-border/60 rounded bg-background-secondary text-left">
-                        <span className="text-[9px] text-muted-foreground block">Review 2</span>
-                        <span className="text-xs font-semibold text-foreground">Day 4</span>
-                      </div>
-                      <div className="p-2 border border-border/60 rounded bg-background-secondary text-left">
-                        <span className="text-[9px] text-muted-foreground block">Review 3</span>
-                        <span className="text-xs font-semibold text-foreground">Day 12</span>
-                      </div>
-                      <div className="p-2 border border-border/60 rounded bg-background-secondary text-left">
-                        <span className="text-[9px] text-muted-foreground block">Review 4</span>
-                        <span className="text-xs font-semibold text-foreground">Day 28</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {showcaseTab === "analytics" && (
-                <div className="space-y-6 text-left animate-in fade-in duration-200">
-                  <div className="flex justify-between items-center pb-3 border-b border-border/60">
-                    <div>
-                      <h4 className="text-xs font-bold text-foreground">Interview Readiness Metrics</h4>
-                      <p className="text-[10px] text-muted-foreground">Data-driven preparation metrics</p>
-                    </div>
-                    <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded font-medium">84% Interview Ready</span>
-                  </div>
-
-                  <div className="space-y-4">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Understand exactly where you stand. Our Readiness Indicator rates topic depth, accuracy metrics, and spaced recall logs to predict performance.
-                    </p>
-
-                    <div className="space-y-2.5 pt-2">
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-semibold text-foreground">
-                          <span>Arrays & Hashing (Mastered)</span>
-                          <span>100%</span>
-                        </div>
-                        <div className="w-full bg-muted dark:bg-muted/40 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-emerald-500 h-full w-full" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-semibold text-foreground">
-                          <span>Sliding Window (Strong)</span>
-                          <span>85%</span>
-                        </div>
-                        <div className="w-full bg-muted dark:bg-muted/40 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-emerald-500 h-full w-[85%]" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-semibold text-foreground">
-                          <span>Graphs & DFS/BFS (Reinforcing)</span>
-                          <span>60%</span>
-                        </div>
-                        <div className="w-full bg-muted dark:bg-muted/40 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-indigo-500 h-full w-[60%]" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-semibold text-foreground">
-                          <span>Dynamic Programming (Weak)</span>
-                          <span>35%</span>
-                        </div>
-                        <div className="w-full bg-muted dark:bg-muted/40 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-destructive h-full w-[35%]" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {showcaseTab === "collections" && (
+              {/* TAB 1: COMMAND DASHBOARD */}
+              {showcaseTab === "dashboard" && (
                 <div className="space-y-5 text-left animate-in fade-in duration-200">
                   <div className="flex justify-between items-center pb-3 border-b border-border/60">
                     <div>
-                      <h4 className="text-xs font-bold text-foreground">Custom Playlists & Markdown Notebook</h4>
-                      <p className="text-[10px] text-muted-foreground">Store notes directly adjacent to problems</p>
+                      <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        Good evening, ajeet <Flame className="size-4 text-amber-500 fill-amber-500/20" />
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">Your active learning hub & daily target plan</p>
                     </div>
-                    <span className="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded font-medium">Notebook Workspace</span>
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full font-semibold border border-emerald-500/20">
+                      ⚡ 14 Days Active Streak
+                    </span>
                   </div>
 
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Build targeted revision checklists for specific interviews. Document complexity metrics and optimal code pathways.
-                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-xl bg-background-secondary border border-border/60 space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold block">TODAY'S REVISION</span>
+                      <span className="text-sm font-bold text-emerald-500 flex items-center gap-1">
+                        <CheckCircle2 className="size-3.5" /> All Caught Up!
+                      </span>
+                    </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="p-3 rounded-xl bg-background-secondary border border-border/60 space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold block">LEETCODE SYNC</span>
+                      <span className="text-sm font-bold text-indigo-500 flex items-center gap-1">
+                        Connected (ajeet)
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-background-secondary border border-border/60 space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold block">TODAY'S GOAL</span>
+                      <span className="text-sm font-bold text-foreground">
+                        0 / 4 Targets Set
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-background-secondary border border-border/60 space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold block">POMODORO FOCUS</span>
+                      <span className="text-sm font-bold text-purple-500 font-mono">
+                        25:00 Focus
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Heatmap & Action Section */}
+                  <div className="p-4 rounded-xl border border-border/60 bg-background-secondary/60 space-y-3">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">28-Day Consistency Calendar</span>
+                      <span className="text-[10px] text-muted-foreground">Updated automatically on review completion</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: 28 }, (_, i) => (
+                        <div 
+                          key={i} 
+                          className={`h-4 flex-1 rounded-[2px] transition-all ${
+                            i < 18 || i === 20 || i === 23 || i === 27
+                              ? "bg-emerald-500 hover:bg-emerald-400"
+                              : "bg-muted/40"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: PATTERN-WISE DSA SHEETS */}
+              {showcaseTab === "sheets" && (
+                <div className="space-y-4 text-left animate-in fade-in duration-200">
+                  <div className="flex justify-between items-center pb-3 border-b border-border/60">
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        Dynamic Programming Master Sheet
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">42 Problems • 11 Hierarchical Patterns</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-background-secondary border border-border/60 p-1 rounded-lg text-[10px] font-semibold">
+                      <span className="px-2 py-0.5 rounded bg-primary text-primary-foreground">Pattern Roadmap</span>
+                      <span className="px-2 py-0.5 text-muted-foreground">Flat Table</span>
+                    </div>
+                  </div>
+
+                  {/* Hierarchical Subtopic Accordions Preview */}
+                  <div className="space-y-2.5">
                     
-                    {/* Mock Collections list */}
-                    <div className="p-3 border border-border/60 rounded bg-background-secondary space-y-2">
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase block">Playlists (3)</span>
+                    {/* Subtopic 1 */}
+                    <div className="border border-border/60 rounded-xl bg-background-secondary/50 p-3 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold text-foreground">
+                        <span className="flex items-center gap-1.5">
+                          📁 1D Dynamic Programming <span className="text-[10px] font-normal text-muted-foreground">(3 Patterns • 0/5 Solved)</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-500 font-mono">0%</span>
+                      </div>
                       
-                      <div className="p-2 border border-border/40 rounded bg-card flex items-center justify-between text-[11px] font-medium">
-                        <span className="flex items-center gap-1.5 text-foreground">
-                          📁 Meta high yield pack
-                        </span>
-                        <span className="text-muted-foreground text-[10px]">12 items</span>
-                      </div>
-
-                      <div className="p-2 border border-border/40 rounded bg-card flex items-center justify-between text-[11px] font-medium">
-                        <span className="flex items-center gap-1.5 text-foreground">
-                          📁 Blind 75 Revision
-                        </span>
-                        <span className="text-muted-foreground text-[10px]">75 items</span>
-                      </div>
-
-                      <div className="p-2 border border-border/40 rounded bg-card flex items-center justify-between text-[11px] font-medium">
-                        <span className="flex items-center gap-1.5 text-foreground">
-                          📁 Graph Traversal
-                        </span>
-                        <span className="text-muted-foreground text-[10px]">6 items</span>
+                      <div className="pl-4 space-y-1.5 border-l-2 border-primary/40 pt-1">
+                        <div className="p-2 rounded-lg border border-border/40 bg-card flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-muted-foreground">#070</span>
+                            <span className="font-semibold text-foreground">Climbing Stairs</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-semibold">Easy</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-muted text-muted-foreground">Meta</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-muted text-muted-foreground">Amazon</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">1D State Transitions</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Mock Notes Editor */}
-                    <div className="p-3 border border-border/60 rounded bg-background-secondary flex flex-col justify-between">
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase block">LRU Cache Notes.md</span>
-                      <div className="bg-card border border-border/40 rounded p-2 text-[10px] font-mono text-muted-foreground leading-relaxed mt-1.5">
-                        <span className="text-blue-500">## Intuition</span><br />
-                        Combine <span className="text-foreground">HashMap</span> + <span className="text-foreground">Doubly LinkedList</span>.<br />
-                        HashMap gets O(1) reads.<br />
-                        DLL allows O(1) updates to node orders.
+                    {/* Subtopic 2 */}
+                    <div className="border border-border/60 rounded-xl bg-background-secondary/50 p-3 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold text-foreground">
+                        <span className="flex items-center gap-1.5">
+                          📁 Strings & Sequence DP <span className="text-[10px] font-normal text-muted-foreground">(2 Patterns • 0/3 Solved)</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-500 font-mono">0%</span>
                       </div>
-                      <span className="text-[9px] text-emerald-500 font-semibold mt-2 block">✓ Saved to cloud</span>
+
+                      <div className="pl-4 space-y-1.5 border-l-2 border-indigo-500/40 pt-1">
+                        <div className="p-2 rounded-lg border border-border/40 bg-card flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-muted-foreground">#005</span>
+                            <span className="font-semibold text-foreground">Longest Palindromic Substring</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 font-semibold">Medium</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-muted text-muted-foreground">Google</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">Expand Center</span>
+                        </div>
+                      </div>
                     </div>
 
                   </div>
                 </div>
               )}
 
-              {showcaseTab === "productivity" && (
-                <div className="space-y-6 text-left animate-in fade-in duration-200">
+              {/* TAB 3: SM-2 REVISION QUEUE */}
+              {showcaseTab === "revision" && (
+                <div className="space-y-5 text-left animate-in fade-in duration-200">
                   <div className="flex justify-between items-center pb-3 border-b border-border/60">
                     <div>
-                      <h4 className="text-xs font-bold text-foreground">Pomodoro Focus Framework</h4>
-                      <p className="text-[10px] text-muted-foreground">Prepare under structured time bounds</p>
+                      <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        Daily Revision Board
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">Active recall loops & interval decay engine</p>
                     </div>
-                    <span className="text-[10px] bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded font-medium">Pomodoro Timer</span>
+                    <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2.5 py-1 rounded-full font-semibold border border-indigo-500/20">
+                      SM-2 Algorithm Active
+                    </span>
                   </div>
 
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Set focused 25-minute study intervals. Time-management tracking builds the edge required for short technical assessment loops.
-                  </p>
-
-                  <div className="flex items-center justify-center p-4 border border-border/60 rounded bg-background-secondary gap-6">
-                    <div className="text-center space-y-1">
-                      <div className="text-2xl font-bold text-foreground tracking-widest font-mono">24:59</div>
-                      <span className="text-[9px] text-muted-foreground uppercase font-medium">Time Remaining</span>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <div className="p-3 rounded-xl border border-border/60 bg-background-secondary text-left space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold block">TOMORROW</span>
+                      <span className="text-sm font-bold text-foreground">2 Problems Due</span>
                     </div>
 
-                    <div className="h-10 w-px bg-border/80" />
+                    <div className="p-3 rounded-xl border border-border/60 bg-background-secondary text-left space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold block">THIS WEEK</span>
+                      <span className="text-sm font-bold text-foreground">7 Problems Scheduled</span>
+                    </div>
 
-                    <div className="text-left space-y-1.5">
-                      <span className="text-[10px] text-foreground font-semibold block">Focus Loop: LRU Cache</span>
-                      <div className="flex gap-2">
-                        <button className="px-3 py-1 bg-primary text-primary-foreground text-[10px] rounded font-semibold">Pause</button>
-                        <button className="px-3 py-1 border border-border/80 text-[10px] rounded font-semibold text-foreground">Skip</button>
+                    <div className="p-3 rounded-xl border border-border/60 bg-background-secondary text-left space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold block">RETENTION RATE</span>
+                      <span className="text-sm font-bold text-emerald-500">94% Optimal Recall</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 border border-border/60 rounded-xl bg-background-secondary/50 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">LRU Cache (#146)</span>
+                      <span className="text-[10px] text-destructive font-semibold">Due Today for Recall</span>
+                    </div>
+                    <div className="flex gap-1.5 pt-1 justify-end">
+                      <span className="text-[10px] border border-destructive/30 text-destructive bg-destructive/10 px-2 py-0.5 rounded font-semibold">Again (1d)</span>
+                      <span className="text-[10px] border border-amber-500/30 text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded font-semibold">Hard (3d)</span>
+                      <span className="text-[10px] border border-indigo-500/30 text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded font-semibold">Good (7d)</span>
+                      <span className="text-[10px] bg-emerald-500 text-white px-2.5 py-0.5 rounded font-semibold">Easy (14d)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: PROBLEM WORKSPACE */}
+              {showcaseTab === "problem" && (
+                <div className="space-y-4 text-left animate-in fade-in duration-200">
+                  <div className="flex justify-between items-center pb-3 border-b border-border/60">
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        Climbing Stairs <span className="text-[10px] px-2 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-semibold">Easy</span>
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">Topic: DP (1D / State Transitions)</p>
+                    </div>
+                    <a href="https://leetcode.com/problems/climbing-stairs" target="_blank" rel="noreferrer" className="text-[10px] bg-primary text-primary-foreground px-3 py-1 rounded-lg font-semibold flex items-center gap-1">
+                      Practice on LeetCode ↗
+                    </a>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="p-3 border border-border/60 rounded-xl bg-background-secondary space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Markdown Notes.md</span>
+                      <div className="bg-card border border-border/40 rounded p-2 text-[10px] font-mono text-muted-foreground leading-relaxed">
+                        <span className="text-indigo-400">## State Transition</span><br />
+                        dp[i] = dp[i-1] + dp[i-2]<br />
+                        <span className="text-emerald-400 font-semibold">Time: O(N) • Space: O(1)</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 border border-border/60 rounded-xl bg-background-secondary space-y-2">
+                      <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Solving Metrics</span>
+                      <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                        <div className="p-1.5 border border-border/40 rounded bg-card">
+                          <span className="text-[9px] text-muted-foreground block">TIME TAKEN</span>
+                          <span className="font-bold text-foreground">12m 45s</span>
+                        </div>
+                        <div className="p-1.5 border border-border/40 rounded bg-card">
+                          <span className="text-[9px] text-muted-foreground block">ATTEMPTS</span>
+                          <span className="font-bold text-foreground">1 Attempt</span>
+                        </div>
                       </div>
                     </div>
                   </div>
