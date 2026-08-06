@@ -3,7 +3,6 @@ import { NavLink } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   LayoutDashboard,
-  BookOpen,
   RefreshCw,
   FolderHeart,
   Bookmark,
