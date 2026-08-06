@@ -163,7 +163,13 @@ export function SheetDetailsPage() {
         api.get("/goals/today").catch(() => null)
       ]);
 
-      setSheet(sheetRes.data.data);
+      const loadedSheet = sheetRes.data.data;
+      setSheet(loadedSheet);
+      if (loadedSheet?.title?.toLowerCase().includes("miscellaneous") && !searchParams.has("view")) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("view", "table");
+        setSearchParams(newParams, { replace: true });
+      }
       setProblems(probRes.data.data.problems);
       setTotalItems(probRes.data.data.pagination.total);
       setTotalPages(probRes.data.data.pagination.totalPages);

@@ -196,7 +196,7 @@ export function DashboardPage() {
           if (dueRevisions.length > 0) {
             handleReviewSelect(dueRevisions[0].problemId);
           } else {
-            addToast("Your revision queue is clean! Try solving a new problem from Problems directory.", "info");
+            addToast("Your revision queue is clean! Try solving a new problem from DSA Sheets.", "info");
           }
         }}
       />

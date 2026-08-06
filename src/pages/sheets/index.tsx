@@ -133,7 +133,31 @@ export function SheetsPage() {
   // Dynamic theme icon & styling per topic sheet title
   const getSheetTheme = (title: string) => {
     const lower = title.toLowerCase();
-    if (lower.includes("sde")) {
+    if (lower.includes("last-minute") || lower.includes("revision")) {
+      return {
+        icon: Flame,
+        gradient: "from-amber-500/20 via-orange-500/10 to-transparent",
+        iconBg: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+        badge: "High-Yield Revision",
+        borderHover: "hover:border-amber-500/50 hover:shadow-amber-500/10"
+      };
+    } else if (lower.includes("beginner to master") || lower.includes("master dsa")) {
+      return {
+        icon: Award,
+        gradient: "from-purple-600/25 via-indigo-500/10 to-transparent",
+        iconBg: "bg-purple-500/10 text-purple-400 border-purple-500/30",
+        badge: "Complete Roadmap",
+        borderHover: "hover:border-purple-500/50 hover:shadow-purple-500/10"
+      };
+    } else if (lower.includes("miscellaneous") || lower.includes("leetcode 500")) {
+      return {
+        icon: Compass,
+        gradient: "from-teal-500/20 via-cyan-500/10 to-transparent",
+        iconBg: "bg-teal-500/10 text-teal-400 border-teal-500/30",
+        badge: "Spoiler-Free Practice",
+        borderHover: "hover:border-teal-500/50 hover:shadow-teal-500/10"
+      };
+    } else if (lower.includes("sde")) {
       return {
         icon: Award,
         gradient: "from-amber-500/20 via-yellow-500/10 to-transparent",

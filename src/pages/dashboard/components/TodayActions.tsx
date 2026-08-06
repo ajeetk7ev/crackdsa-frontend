@@ -563,7 +563,7 @@ export function TodayGoalCard({
             <Typography variant="muted" className="text-xs block leading-relaxed px-2">
               No target problems set for today. Choose up to 4 high-yield goals.
             </Typography>
-            <Link to="/problems" className="mx-auto block">
+            <Link to="/sheets" className="mx-auto block">
               <Button
                 variant="default"
                 size="sm"
