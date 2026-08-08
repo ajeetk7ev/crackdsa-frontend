@@ -5,6 +5,7 @@ import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
+import { UserDetailModal } from "@/components/admin/UserDetailModal";
 
 import {
   Plus,
@@ -17,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +30,7 @@ interface UserItem {
   status?: "active" | "blocked" | string;
   avatar?: string;
   createdAt?: string;
+  solvedCount?: number;
 }
 
 const getInitials = (name: string) => {
@@ -58,6 +61,8 @@ export function AdminUsersPage() {
   // Modals Visibility
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Form Fields Binds
   const [formName, setFormName] = useState("");
@@ -99,47 +104,55 @@ export function AdminUsersPage() {
       const matchSearch =
         u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
 
-      const matchRole = filterRole === "All" || u.role?.toLowerCase() === filterRole.toLowerCase() || (filterRole === "student" && u.role?.toLowerCase() === "user");
+      const matchRole =
+        filterRole === "All" ||
+        (filterRole === "admin" && u.role?.toLowerCase() === "admin") ||
+        (filterRole === "student" && (u.role?.toLowerCase() === "student" || u.role?.toLowerCase() === "user"));
 
-      const isBlocked = u.status === "blocked";
       const matchStatus =
         filterStatus === "All" ||
-        (filterStatus === "active" && !isBlocked) ||
-        (filterStatus === "blocked" && isBlocked);
+        (filterStatus === "active" && u.status === "active") ||
+        (filterStatus === "blocked" && u.status === "blocked");
 
       return matchSearch && matchRole && matchStatus;
     });
   }, [users, searchQuery, filterRole, filterStatus]);
 
-  // Paginated List
+  // Pagination Compute
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
   const paginatedUsers = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredUsers.slice(start, start + itemsPerPage);
   }, [filteredUsers, currentPage]);
 
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
   // Reset page index on filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, filterRole, filterStatus]);
 
-  // Change user role Binds
-  const handleToggleRole = async (userId: string) => {
+  // Toggle user role Action Binds
+  const handleToggleRole = async (id: string) => {
     try {
-      await api.put(`/admin/users/${userId}/role`);
+      await api.put(`/admin/users/${id}/role`);
       addToast("User role toggled successfully.", "success");
       loadAdminUsers();
     } catch (err: any) {
-      const errMsg = err?.response?.data?.message || "Failed to toggle user role.";
+      const errMsg = err?.response?.data?.message || "Failed to update user role.";
       addToast(errMsg, "error");
     }
   };
 
-  // Toggle user block status Binds
-  const handleToggleBlock = async (userId: string) => {
+  // Toggle user status Action Binds
+  const handleToggleBlock = async (id: string) => {
     try {
-      await api.put(`/admin/users/${userId}/status`);
-      addToast("User status updated successfully.", "info");
+      await api.put(`/admin/users/${id}/status`);
+      addToast("User account status toggled.", "info");
       loadAdminUsers();
     } catch (err: any) {
       const errMsg = err?.response?.data?.message || "Failed to update user status.";
@@ -219,7 +232,7 @@ export function AdminUsersPage() {
             User Account Management
           </Typography>
           <Typography variant="muted">
-            Manage user roles, block access directories, or register candidates manually.
+            Manage user roles, inspect candidate progress, or register users manually.
           </Typography>
         </div>
 
@@ -294,15 +307,16 @@ export function AdminUsersPage() {
                 <th className="px-4 py-3 w-16 text-center">Status</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email Address</th>
-                <th className="px-4 py-3 w-32">Role Badge</th>
-                <th className="px-4 py-3 w-32">Join Date</th>
-                <th className="px-4 py-3 text-center w-40">Actions</th>
+                <th className="px-4 py-3 text-center">Solved</th>
+                <th className="px-4 py-3 w-28">Role</th>
+                <th className="px-4 py-3 w-28">Join Date</th>
+                <th className="px-4 py-3 text-center w-52">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-sm">
               {paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="py-12 text-center text-muted-foreground">
                     <div className="max-w-md mx-auto space-y-2">
                       <Users className="size-8 text-muted-foreground/60 mx-auto" />
                       <p className="font-semibold text-foreground">No Users Found</p>
@@ -347,6 +361,11 @@ export function AdminUsersPage() {
                       <td className="px-4 py-3.5 text-muted-foreground">
                         {item.email}
                       </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                          {item.solvedCount ?? 0}
+                        </span>
+                      </td>
                       <td className="px-4 py-3.5">
                         {item.role?.toLowerCase() === "admin" ? (
                           <span className="text-[10px] font-bold text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-full inline-flex items-center gap-1 select-none">
@@ -364,6 +383,17 @@ export function AdminUsersPage() {
                       <td className="px-4 py-3.5">
                         <div className="flex items-center justify-center gap-1">
                           
+                          <button
+                            onClick={() => {
+                              setSelectedUserId(item.id);
+                              setIsDetailOpen(true);
+                            }}
+                            className="h-7 px-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 cursor-pointer shadow-sm inline-flex items-center gap-1"
+                            title="View Candidate Progress"
+                          >
+                            <BarChart2 className="size-3" /> Progress
+                          </button>
+
                           <button
                             onClick={() => handleToggleRole(item.id)}
                             className="h-7 px-2 rounded-lg border border-border bg-background hover:bg-muted/50 text-[10px] font-semibold text-foreground cursor-pointer shadow-sm inline-flex items-center gap-1"
@@ -409,7 +439,7 @@ export function AdminUsersPage() {
         <span>Showing page {currentPage} of {totalPages} ({filteredUsers.length} results)</span>
         <div className="flex gap-2">
           <button
-            onClick={() => setCurrentPage(currentPage - 1)}
+            onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
             className="h-8 px-3 rounded-lg border border-border bg-background text-foreground hover:bg-muted/50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
           >
@@ -417,7 +447,7 @@ export function AdminUsersPage() {
           </button>
           
           <button
-            onClick={() => setCurrentPage(currentPage + 1)}
+            onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
             className="h-8 px-3 rounded-lg border border-border bg-background text-foreground hover:bg-muted/50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
           >
@@ -528,6 +558,13 @@ export function AdminUsersPage() {
           </div>
         </div>
       </Dialog>
+
+      {/* 3. User Detailed Analytics & Progress Modal */}
+      <UserDetailModal
+        userId={selectedUserId}
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+      />
 
     </div>
   );

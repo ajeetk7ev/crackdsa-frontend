@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { api } from "@/lib/axios";
 import { useNotificationStore } from "@/stores/notification.store";
 import { Typography } from "@/components/ui/typography";
@@ -10,12 +11,15 @@ import {
   Activity, 
   TrendingUp, 
   ShieldAlert, 
-
+  BarChart2,
+  FileCode,
+  ArrowRight
 } from "lucide-react";
 
 interface SummaryData {
   totalUsers: number;
   totalProblems: number;
+  totalSheets?: number;
   totalSubmissions: number;
   activeToday: number;
 }
@@ -52,7 +56,7 @@ export function AdminDashboardPage() {
           Platform Summary Dashboard
         </Typography>
         <Typography variant="muted">
-          Global analytics telemetry and registration counts from live MongoDB instances.
+          Global analytics telemetry, user-wise progress monitoring, and MongoDB platform controls.
         </Typography>
       </div>
 
@@ -103,7 +107,58 @@ export function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 3. Server Node Health Info panel */}
+      {/* 3. Quick Navigation Hub */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link
+          to="/admin/users"
+          className="p-5 rounded-xl border border-border bg-card shadow-sm hover:border-indigo-500/50 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+              <Users className="size-5" />
+            </div>
+            <ArrowRight className="size-4 text-muted-foreground group-hover:text-indigo-500 transition-colors" />
+          </div>
+          <h3 className="font-semibold text-foreground text-sm">User Directory & Progress</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Inspect individual candidate stats, solved difficulty breakdown, and topic mastery.
+          </p>
+        </Link>
+
+        <Link
+          to="/admin/analytics"
+          className="p-5 rounded-xl border border-border bg-card shadow-sm hover:border-emerald-500/50 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-500">
+              <BarChart2 className="size-5" />
+            </div>
+            <ArrowRight className="size-4 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
+          </div>
+          <h3 className="font-semibold text-foreground text-sm">Platform Intelligence</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            View platform registration trends, difficulty distribution graphs, and live telemetry.
+          </p>
+        </Link>
+
+        <Link
+          to="/admin/problems"
+          className="p-5 rounded-xl border border-border bg-card shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500">
+              <FileCode className="size-5" />
+            </div>
+            <ArrowRight className="size-4 text-muted-foreground group-hover:text-amber-500 transition-colors" />
+          </div>
+          <h3 className="font-semibold text-foreground text-sm">Problem Catalog CMS</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Add, update, or reorganize DSA interview problems, tags, and solution notes.
+          </p>
+        </Link>
+      </div>
+
+      {/* 4. Server Node Health Info panel */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* Log Stream Panel */}
         <div className="md:col-span-2 p-6 rounded-xl border border-border bg-card shadow-sm text-left space-y-4">
@@ -113,7 +168,7 @@ export function AdminDashboardPage() {
               Live Server Telemetry Status
             </Typography>
             <span className="text-[9px] font-extrabold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              ONLINE
+              OPERATIONAL
             </span>
           </div>
 
@@ -129,12 +184,12 @@ export function AdminDashboardPage() {
           <div className="flex items-center justify-between border-b border-border pb-3">
             <Typography variant="title" className="text-foreground flex items-center gap-1.5">
               <ShieldAlert className="size-4 text-amber-500" />
-              Admin Authority
+              Admin Authority Controls
             </Typography>
           </div>
 
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Administrative settings grant direct write access to MongoDB templates, revision indexes, and user profiles. Actions are immediately propagated to all active student dashboards.
+            Administrative settings grant direct write access to MongoDB templates, revision indexes, and user profiles. Actions are immediately propagated to all active candidate dashboards.
           </p>
         </div>
       </div>
