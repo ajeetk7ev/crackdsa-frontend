@@ -81,7 +81,7 @@ export function AuthLayout() {
       <div className="flex-1 flex flex-col justify-between p-8 md:p-12 relative">
         <header className="flex justify-between items-center lg:justify-end mb-6">
           <Link to="/" className="lg:hidden flex items-center gap-2 select-none">
-            <Logo size={60} />
+            <Logo size={40} />
           </Link>
           <button
             onClick={() => toggleTheme()}
