@@ -23,8 +23,15 @@ import { ProfilePage } from "@/pages/profile";
 import { SettingsPage } from "@/pages/settings";
 import { SheetsPage } from "@/pages/sheets";
 import { SheetDetailsPage } from "@/pages/sheets/details";
+import { MockTestsPage } from "@/pages/mock-tests";
+import { MockTestActivePage } from "@/pages/mock-tests/test";
+import { MockTestResultPage } from "@/pages/mock-tests/result";
+import { MockTestLeaderboardPage } from "@/pages/mock-tests/leaderboard";
 import { AdminSheetsPage } from "@/pages/admin/sheets";
 import { AdminSheetsFormPage } from "@/pages/admin/sheets/form";
+import { AdminMockTestsPage } from "@/pages/admin/mock-tests";
+import { AdminMockTestFormPage } from "@/pages/admin/mock-tests/form";
+import { AdminMockTestAnalyticsPage } from "@/pages/admin/mock-tests/analytics";
 import { AdminDashboardPage } from "@/pages/admin/dashboard";
 import { AdminProblemsPage } from "@/pages/admin/problems";
 import { AdminUsersPage } from "@/pages/admin/users";
@@ -62,6 +69,10 @@ export function AppRoutes() {
         <Route path="/revision" element={<RevisionPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/contests" element={<ContestsPage />} />
+        <Route path="/mock-tests" element={<MockTestsPage />} />
+        <Route path="/mock-tests/:id/test" element={<MockTestActivePage />} />
+        <Route path="/mock-tests/:id/result" element={<MockTestResultPage />} />
+        <Route path="/mock-tests/:id/leaderboard" element={<MockTestLeaderboardPage />} />
         <Route path="/sheets" element={<SheetsPage />} />
         <Route path="/sheets/:id" element={<SheetDetailsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
@@ -78,6 +89,10 @@ export function AppRoutes() {
         <Route path="/admin/sheets" element={<AdminSheetsPage />} />
         <Route path="/admin/sheets/new" element={<AdminSheetsFormPage />} />
         <Route path="/admin/sheets/edit/:id" element={<AdminSheetsFormPage />} />
+        <Route path="/admin/mock-tests" element={<AdminMockTestsPage />} />
+        <Route path="/admin/mock-tests/new" element={<AdminMockTestFormPage />} />
+        <Route path="/admin/mock-tests/edit/:id" element={<AdminMockTestFormPage />} />
+        <Route path="/admin/mock-tests/:id/analytics" element={<AdminMockTestAnalyticsPage />} />
       </Route>
 
       {/* 5. 404 Fallback */}

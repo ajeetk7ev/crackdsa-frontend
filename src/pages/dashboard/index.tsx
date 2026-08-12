@@ -12,6 +12,7 @@ import { Pomodoro } from "./components/Pomodoro";
 import { TodayRevisionCard, LeetcodeProfileCard, TodayGoalCard } from "./components/TodayActions";
 import { LearningProgress } from "./components/LearningProgress";
 import { ContestWidget } from "./components/ContestWidget";
+import { MockTestWidget } from "./components/MockTestWidget";
 
 import { ExternalLink } from "lucide-react";
 
@@ -230,6 +231,14 @@ export function DashboardPage() {
           Contests
         </Typography>
         <ContestWidget />
+      </div>
+
+      {/* SECTION 3.5: MOCK TESTS */}
+      <div className="space-y-3">
+        <Typography variant="h3" className="font-semibold text-foreground border-l-2 border-primary pl-2 text-left">
+          Mock Tests
+        </Typography>
+        <MockTestWidget />
       </div>
 
       {/* SECTION 4: LEARNING PROGRESS */}
